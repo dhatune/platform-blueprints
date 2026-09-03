@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and replace with your own values.
+# terraform.tfvars is excluded from version control; this file is not.
+#
+# Every value below is fictional. A real organisation or billing identifier in
+# a public repository is free reconnaissance for an attacker.
+
+organization_id = "000000000000"
+billing_account = "000000-000000-000000"
+quota_project   = "example-bootstrap"
+region          = "us-east1"
+project_prefix  = "example"

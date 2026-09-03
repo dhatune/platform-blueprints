@@ -47,11 +47,29 @@ down rather than quietly fixed.
 
 → [Read it](patterns/llm-ports/)
 
+### `landing-zone` — available now
+
+The organisation layout a platform sits on: folder hierarchy, a Shared VPC host
+with two physically isolated networks, and one project per product per
+environment.
+
+The environments are separate networks rather than subnets of one, and they are
+not peered. There is no route between production and development to permit or
+deny. That costs real money — anything shared has to be built twice — and it
+buys isolation that survives someone editing a firewall rule.
+
+```
+terraform fmt -check -recursive .
+terraform validate            valid
+provider lock                 linux_amd64, darwin_arm64, darwin_amd64
+```
+
+→ [Read it](landing-zone/)
+
 ### Planned
 
 | Section | What it will cover |
 |---|---|
-| `landing-zone/` | GCP organisation layout: folder hierarchy, Shared VPC with physically isolated production and development, service projects per product, CI/CD, and a zero service-account-key posture |
 | `platform/erpnext/` | ERPNext deployment with managed secrets, least-privilege service account, private networking and verified backups |
 | `platform/chatwoot/` | Customer conversation platform, same security baseline |
 | `platform/docuseal/` | Electronic signature, same security baseline |
@@ -85,6 +103,8 @@ short, dated, and state what was rejected as well as what was chosen.
 1. [Depend on a port, not on a provider](docs/decisions/0001-depend-on-a-port-not-a-provider.md)
 2. [Tests must not touch the network](docs/decisions/0002-tests-must-not-touch-the-network.md)
 3. [Segregate the ports instead of widening one](docs/decisions/0003-segregated-ports-for-advanced-capabilities.md)
+4. [Separate networks per environment, not one network with rules](docs/decisions/0004-isolated-networks-instead-of-one-with-rules.md)
+5. [No service account keys](docs/decisions/0005-no-service-account-keys.md)
 
 ---
 
