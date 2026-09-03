@@ -31,14 +31,57 @@ that ciphertext is also the file that a stolen disk image contains.
 scripted and exercised on a schedule. Discovering that a database dump is
 truncated during an incident is discovering it too late.
 
-## Layout
+## Two deployments of the same service
 
 ```
-deploy/     Kubernetes manifests: namespace, deployment, volume, service,
-            network policies, and a kustomization that ties them together
+deploy/     Kubernetes: namespace, deployment, volume, service, network
+            policies, and a kustomization that ties them together
+cloud-run/  Terraform: Cloud Run service, Cloud SQL, bucket, secrets and a
+            service account holding only what it uses
 backup/     backup.sh takes a consistent backup; verify-restore.sh proves
             the result is usable
 ```
+
+Both enforce the same decisions. What differs is everything underneath, and
+the reason is a single constraint: **Cloud Run has no persistent local disk.**
+
+| | Kubernetes | Cloud Run |
+|---|---|---|
+| Database | SQLite on a volume | PostgreSQL — SQLite cannot exist here |
+| Held to one instance by | the volume's access mode | an explicit instance ceiling |
+| Signing key | a file on the volume | mounted from a secret |
+| Attachments | the same volume | a bucket mounted into the container |
+| Inbound limits | network policy | ingress restricted to a load balancer |
+| Outbound limits | network policy | private ranges only |
+| Backups | `sqlite3 .backup` plus the verify script | managed backups and point-in-time recovery |
+| Identity | a namespaced account | a service account with per-secret access |
+
+### The one that will catch you
+
+On Kubernetes the signing key is a file that is written once and stays. On
+Cloud Run every new instance starts with an empty filesystem, so each one
+generates **a different key**, and a session token signed by one instance is
+rejected by the next. Users are logged out at apparently random moments, which
+reads like a bug in the client rather than a consequence of where the file
+lives. The Cloud Run variant therefore mounts the key from Secret Manager,
+generated once out of band so it never passes through Terraform state.
+
+The same reasoning applies to attachments, which are written to disk and would
+disappear on every instance recycle.
+
+### What each platform makes you say out loud
+
+Neither is safer. They make different mistakes easy.
+
+Kubernetes lets you keep SQLite, which is simpler and genuinely adequate here —
+but it puts the burden on you to prevent a second replica, and the enforcement
+is a volume access mode and an update strategy rather than anything obvious.
+Get it wrong and the database corrupts quietly.
+
+Cloud Run takes that mistake away, because a managed database does not care how
+many instances connect. In exchange it introduces a class of problem that does
+not exist on the other side: state you assumed was on disk is not, and the
+symptom appears far from the cause.
 
 ## The parts worth reading before copying
 

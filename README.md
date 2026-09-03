@@ -79,10 +79,17 @@ copy taken while the server runs is valid often enough to be trusted and
 corrupt often enough to matter. And a second script restores that backup and
 checks it, because a backup that has never been restored is a belief.
 
+Built twice, for Kubernetes and for Cloud Run, because the platform decides the
+failure mode. Cloud Run has no persistent local disk, so SQLite cannot exist
+there and the signing key has to come from a secret — otherwise every new
+instance generates its own and users are logged out at random.
+
 ```
 kubectl apply --dry-run    valid
+terraform validate         valid
 restore verification       rejects a torn database, an empty one,
                            a missing signing key and a truncated archive
+not verified               neither variant has been deployed to a cluster
 ```
 
 → [Read it](platform/vaultwarden/)

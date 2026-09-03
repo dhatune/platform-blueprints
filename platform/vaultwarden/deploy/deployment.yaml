@@ -24,6 +24,12 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
         runAsGroup: 65534
+        # fsGroup is load-bearing, not decoration. The volume arrives owned by
+        # root, and the container writes its database and signing key as 65534.
+        # Without this line the kubelet does not change the volume's ownership
+        # and the process dies on first boot failing to create its private key.
+        # The error it prints names a missing file rather than a permission, so
+        # the cause is not obvious from the log.
         fsGroup: 65534
         seccompProfile:
           type: RuntimeDefault
