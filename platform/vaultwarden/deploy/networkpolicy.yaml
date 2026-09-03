@@ -1,0 +1,52 @@
+# Two policies, because a single one that allows both directions hides which
+# direction was actually intended. Default-deny comes first so that adding a
+# pod to this namespace without a matching allow rule fails closed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: vaultwarden
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  podSelector:
+    matchLabels:
+      app: vaultwarden
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    # Only the ingress controller reaches it. Nothing else in the cluster has
+    # any business talking to the password manager, and most compromises of a
+    # neighbouring workload start by looking for exactly that.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Outbound SMTP, and nothing else. Vaultwarden needs to send invitations
+    # and password-change notices. It has no reason to reach any other host on
+    # the internet, so it cannot.
+    - ports:
+        - protocol: TCP
+          port: 587
