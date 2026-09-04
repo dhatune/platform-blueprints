@@ -24,3 +24,16 @@ variable "project_prefix" {
   description = "Prefix for generated project IDs, to keep them unique and recognisable."
   type        = string
 }
+
+variable "allowed_customer_ids" {
+  description = <<-EOT
+    Cloud Identity customer IDs allowed to appear in IAM policies. These look
+    like C0xxxxxxx and are not domain names.
+  EOT
+  type        = list(string)
+}
+
+variable "applier_service_account" {
+  description = "Email of the service account that applies infrastructure changes."
+  type        = string
+}

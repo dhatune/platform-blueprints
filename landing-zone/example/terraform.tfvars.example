@@ -9,3 +9,9 @@ billing_account = "000000-000000-000000"
 quota_project   = "example-bootstrap"
 region          = "us-east1"
 project_prefix  = "example"
+
+# Cloud Identity customer IDs, not domains. Find yours with:
+#   gcloud organizations describe <org id> --format="value(owner.directoryCustomerId)"
+allowed_customer_ids = ["C01example"]
+
+applier_service_account = "sa-apply@example-bootstrap.iam.gserviceaccount.com"

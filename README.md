@@ -58,10 +58,17 @@ not peered. There is no route between production and development to permit or
 deny. That costs real money — anything shared has to be built twice — and it
 buys isolation that survives someone editing a firewall rule.
 
+Access is assigned to groups rather than people, because access has to end when
+someone leaves and that must be one action in one place. Constraints are applied
+before any of it, because a grant made while they were absent was never checked
+against them.
+
 ```
 terraform fmt -check -recursive .
 terraform validate            valid
 provider lock                 linux_amd64, darwin_arm64, darwin_amd64
+refused at plan time          primitive roles, an applier that can change IAM,
+                              a domain name where a customer ID belongs
 ```
 
 → [Read it](landing-zone/)
@@ -161,6 +168,8 @@ short, dated, and state what was rejected as well as what was chosen.
 7. [Backups are verified by restoring them, on a schedule](docs/decisions/0007-backups-verified-by-restoring-them.md)
 8. [Stateless is not the same as interruptible](docs/decisions/0008-stateless-is-not-interruptible.md)
 9. [One workload, several entrances with different locks](docs/decisions/0009-one-workload-several-doors.md)
+10. [Bindings go to groups, never to people](docs/decisions/0010-bindings-go-to-groups.md)
+11. [A constraint is not a role](docs/decisions/0011-a-constraint-is-not-a-role.md)
 
 ---
 

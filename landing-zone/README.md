@@ -101,3 +101,45 @@ what this section is for.
 
 State backend configuration is present but commented: the bucket name is the
 one value that cannot be made fictional and still be useful.
+
+## Access and constraints
+
+Two more modules complete the hierarchy, and they are different in kind.
+
+`access` assigns roles, and every binding names a **group** rather than a
+person. This is not tidiness. When someone leaves, their access has to end, and
+if bindings name individuals that means finding every place their address
+appears across the whole estate. Nobody does that reliably. A group makes it one
+action in one place. Primitive roles are refused at plan time, and so is any
+attempt to give the applying identity a role that could change IAM policy —
+because an identity that can widen its own access makes the approval gate in
+front of it decorative.
+
+`guardrails` applies organisation policy constraints, which are the other kind
+of control entirely. A role is a grant, and anyone who can grant roles can grant
+a different one. A constraint is a limit that a project owner cannot remove. The
+distinction is the difference between a decision that is written down and a
+decision that holds at three in the morning when the deployment has to go out.
+
+The constraints deny service account key creation, restrict IAM policies to the
+organisation's own identities, and refuse external addresses on machines, public
+database addresses and public buckets.
+
+Two details worth knowing before applying them:
+
+The domain restriction takes **Cloud Identity customer IDs**, not domain names.
+A domain name there produces a policy that matches nothing and reports success,
+which is the worst outcome a control can have. The module refuses the wrong
+shape at plan time.
+
+The constraint on automatic grants to default service accounts is correct and
+will break the build process of some managed runtimes, with an error that never
+mentions policy. The exception belongs at the folder holding those workloads
+rather than at the organisation, so the rest of the estate keeps the protection.
+That exception is configuration with a reason attached, not a change somebody
+once made in a console.
+
+Constraints are applied before access is granted. A grant made while they were
+absent was never checked against them, and applying them afterwards does not
+revoke it.
+
