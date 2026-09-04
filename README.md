@@ -19,7 +19,7 @@ So every section here carries the same three things:
 
 - **What it does** — the working implementation.
 - **Why it is built this way** — the decision and the alternative it beat.
-- **What it costs** — the tradeoff you are accepting.
+- **What it costs** — the trade-off you are accepting.
 
 ---
 
@@ -87,9 +87,10 @@ corrupt often enough to matter. And a second script restores that backup and
 checks it, because a backup that has never been restored is a belief.
 
 Built twice, for Kubernetes and for Cloud Run, because the platform decides the
-failure mode. Cloud Run has no persistent local disk, so SQLite cannot exist
-there and the signing key has to come from a secret — otherwise every new
-instance generates its own and users are logged out at random.
+failure mode. Cloud Run can mount a bucket, so persistence is not the problem —
+file locking is. SQLite on a mounted bucket runs, capped at one instance
+forever. And the signing key has to leave the container's own filesystem, or
+every new instance generates its own and users are logged out at random.
 
 ```
 kubectl apply --dry-run    valid
@@ -138,6 +139,49 @@ deploy. An init container fixes it.
 Sections are published when they are finished, not when they are started.
 
 ---
+
+## What each part is, and is not
+
+Written plainly, because a reader deciding whether to use any of this deserves
+to know where it stops.
+
+**`patterns/llm-ports`** — a small Python package showing how to depend on a
+port rather than on a provider, with a contract test that runs against a real
+one. Take the shape and the tests. It is not a client library: one adapter, no
+streaming, no tool calling, and ADR 3 explains why those do not belong behind
+the same port.
+
+**`landing-zone`** — five Terraform modules: hierarchy, two isolated networks,
+a project per environment, group-based access, and policy constraints. Enough
+to stand up the shell of an organisation. It has been applied once to a real
+organisation and destroyed, and Shared VPC attachment specifically was never
+reached. There is no compute, no pipeline, no logging destination, no registry
+and no outbound gateway. It is a floor plan, not a building.
+
+**`platform/vaultwarden`** — a password manager for Cloud Run, with the
+Kubernetes variant kept for the comparison. The backup and restore scripts work
+and were exercised against a database built for the purpose, not against a
+running instance. Neither deployment has been run end to end.
+
+**`platform/n8n`** — the only section deployed to a cluster, exercised and torn
+down. Take it and it will come up. It has no gateway, no certificate, and no
+backup for its database, which sits oddly beside ADR 7 in this same repository
+and is named here rather than left to be noticed.
+
+**`docs/decisions`** — eleven decisions, each with what was rejected and what
+it costs. This is the part with the longest useful life. The code will age.
+
+**`.github/workflows`** — checks that run without credentials, which is exactly
+their limit. They catch a stray secret, a broken link, a real hostname, an
+unformatted file. They pass every defect that applying this to a real
+organisation found.
+
+### The honest summary
+
+A competent engineer could take any section and have something running the same
+day. Nobody should take any of it and put it in front of customers without
+reading the decision that goes with it, because the decisions are where the
+costs are written, and every one of them costs something.
 
 ## Ground rules
 

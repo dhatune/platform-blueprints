@@ -1,13 +1,24 @@
 # Vaultwarden on Cloud Run.
 #
 # The same service as the Kubernetes variant, with one difference that changes
-# everything else: Cloud Run has no persistent local disk. Every design choice
-# below follows from that single constraint.
+# everything else — and it is easy to state wrongly.
+#
+# Cloud Run is not without persistence. A bucket can be mounted into the
+# container and it outlives the instance. What is missing is POSIX file
+# locking: a mounted bucket presents files, not the locks a database uses to
+# stop two writers from interleaving.
+#
+# So SQLite on a mounted bucket does work, capped at exactly one instance. That
+# is a legitimate way to run this and costs less than what follows. The managed
+# database below is the other answer: more parts, more cost, and no ceiling.
 
-# SQLite is not an option here. Cloud Run's filesystem is per-instance and
-# disappears when the instance does, so the database has to live outside the
-# container. This is not a preference between two databases; on this platform
-# one of them cannot exist.
+# A managed database, chosen so that the instance count is not pinned at one.
+#
+# The alternative is SQLite on a mounted bucket, which works and is cheaper.
+# It carries a permanent ceiling of a single instance, because a bucket mount
+# offers no file locking and two writers on one SQLite file corrupt it. Take
+# that trade knowingly; do not discover the ceiling when the service needs to
+# scale and cannot.
 resource "google_sql_database_instance" "vault" {
   name             = "${var.name}-db"
   project          = var.project_id

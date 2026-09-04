@@ -47,11 +47,17 @@ comparison is this section's actual content: seeing what the same service costs
 on each platform is more useful than either manifest alone.
 
 Both enforce the same decisions. What differs is everything underneath, and the
-reason is a single constraint: **Cloud Run has no persistent local disk.**
+reason is one constraint that is easy to state imprecisely.
+
+Cloud Run is not without persistence — a bucket can be mounted into the
+container and it survives the instance. What it does not have is a filesystem
+with POSIX locking. A mounted bucket presents files, not the locks a database
+uses to keep two writers from interleaving. So the question is never "where do
+the bytes live" but "what happens when two processes reach for them".
 
 | | Kubernetes | Cloud Run |
 |---|---|---|
-| Database | SQLite on a volume | PostgreSQL — SQLite cannot exist here |
+| Database | SQLite on a volume | SQLite on a bucket, or a managed database |
 | Held to one instance by | the volume's access mode | an explicit instance ceiling |
 | Signing key | a file on the volume | mounted from a secret |
 | Attachments | the same volume | a bucket mounted into the container |
@@ -60,18 +66,35 @@ reason is a single constraint: **Cloud Run has no persistent local disk.**
 | Backups | `sqlite3 .backup` plus the verify script | managed backups and point-in-time recovery |
 | Identity | a namespaced account | a service account with per-secret access |
 
-### The one that will catch you
+### Two ways to run it on Cloud Run, and both are real
 
-On Kubernetes the signing key is a file that is written once and stays. On
-Cloud Run every new instance starts with an empty filesystem, so each one
-generates **a different key**, and a session token signed by one instance is
-rejected by the next. Users are logged out at apparently random moments, which
-reads like a bug in the client rather than a consequence of where the file
-lives. The Cloud Run variant therefore mounts the key from Secret Manager,
-generated once out of band so it never passes through Terraform state.
+**Mount a bucket and keep SQLite.** This works, and it is what the author runs
+in production. There is no separate database to pay for or patch, and the whole
+service is one container and one bucket. The price is a ceiling written into
+the configuration: the instance count is capped at exactly one, forever,
+because a bucket mount gives no file locking and two writers on one SQLite file
+corrupt it. Reads and writes also go through an API rather than a disk, which
+is fine for a password manager and would not be for something chatty.
 
-The same reasoning applies to attachments, which are written to disk and would
-disappear on every instance recycle.
+**Use a managed database.** More moving parts and more cost, and it removes the
+ceiling: instances can come and go without the storage layer caring. Worth it
+when the ceiling starts to bind, not before.
+
+The Terraform here shows the second because the first is a smaller change from
+it than the reverse, and because the ceiling deserves to be a decision somebody
+makes rather than a default they inherit.
+
+### The one that will catch you either way
+
+The signing key. Vaultwarden generates it on first boot and uses it to sign
+session tokens. If it lands on the container's own filesystem rather than in
+the bucket or a secret, every new instance generates **a different key**, and a
+token signed by one is rejected by the next. Users are logged out at apparently
+random moments, which reads like a bug in the client rather than a consequence
+of where a file lives.
+
+The same reasoning covers attachments, which are written as files and are gone
+on the next instance unless they are on the mount.
 
 ### Why Cloud Run wins here
 

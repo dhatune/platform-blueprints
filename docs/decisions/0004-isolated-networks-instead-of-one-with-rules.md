@@ -56,5 +56,5 @@ Addressing must be planned so the ranges never overlap, in case the two are
 ever deliberately connected.
 
 Cloud NAT, if it becomes necessary, is also duplicated. That is the same
-tradeoff, and it is the reason the baseline omits it entirely until a workload
+trade-off, and it is the reason the baseline omits it entirely until a workload
 demands it.

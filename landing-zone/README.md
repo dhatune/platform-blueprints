@@ -170,8 +170,8 @@ an API also takes minutes to propagate, so the first apply after enabling one
 fails and the retry succeeds.
 
 **A permission that lives above the stack.** Enabling a Shared VPC host needs a
-role granted at the organisation, which neither owner nor organization admin
-includes. The failure names the permission and not the role.
+role granted at the organisation, which neither `roles/owner` nor
+`roles/resourcemanager.organizationAdmin` includes. The failure names the permission and not the role.
 
 Shared VPC attachment itself is therefore still unverified: the run stopped at
 that permission rather than granting a new organisation-level role to finish a
