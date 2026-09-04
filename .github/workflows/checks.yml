@@ -28,17 +28,26 @@ on:
 permissions:
   contents: read
 
+# Third-party actions are pinned to a commit, not to a tag.
+#
+# This repository argues in two other places that a tag can be moved to point
+# somewhere else and a digest cannot, and then asks you to trust ten actions
+# pinned to v4 and v3. A tag on an action is a moving pointer controlled by
+# somebody else, and these run with the checkout and the workflow token. The
+# comment after each pin records which release it was, since a bare commit is
+# unreadable.
+
 jobs:
   secrets:
     name: secrets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # gitleaks needs history to scan commits, not only the working tree.
           # A secret removed in a later commit is still a leaked secret.
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -46,7 +55,7 @@ jobs:
     name: no real identifiers
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Refuse anything traceable to a live environment
         run: |
           # The repository's ground rule says no project identifiers, no
@@ -80,8 +89,8 @@ jobs:
       run:
         working-directory: patterns/llm-ports
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]" pytest mypy
@@ -96,8 +105,8 @@ jobs:
     name: terraform
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
           terraform_wrapper: false
       - name: Format
@@ -107,7 +116,14 @@ jobs:
           set -e
           for dir in landing-zone/modules/*/ landing-zone/example platform/vaultwarden/cloud-run; do
             echo "--- $dir"
-            terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+            # Where a lock file is committed, refuse to update it. A run that
+            # silently rewrites the lock verifies whatever it just downloaded
+            # rather than what was reviewed.
+            if [ -f "$dir/.terraform.lock.hcl" ]; then
+              terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly >/dev/null
+            else
+              terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+            fi
             terraform -chdir="$dir" validate
           done
 
@@ -115,7 +131,7 @@ jobs:
     name: kubernetes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Validate manifests against the API schemas
         run: |
           # kubeconform checks the manifests against real Kubernetes schemas,
@@ -135,7 +151,7 @@ jobs:
     name: shell
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
       - run: shellcheck platform/vaultwarden/backup/*.sh
 
@@ -143,7 +159,7 @@ jobs:
     name: links
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Every relative link resolves
         run: |
           fail=0
@@ -157,4 +173,47 @@ jobs:
               fi
             done < <(grep -oE '\]\([^)]+\)' "$file" | sed 's/](//;s/)$//')
           done < <(find . -name '*.md' -not -path './.git/*')
+          exit $fail
+
+  lock-files:
+    name: lock files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Only where Terraform runs, and covering every platform
+        run: |
+          fail=0
+
+          # A lock file belongs to a root module — the directory init and apply
+          # are run in. Terraform never reads one from a child module, so a lock
+          # file under modules/ is a leftover from validating there, and keeping
+          # it implies a guarantee nothing enforces.
+          #
+          # The rule is the path rather than "does this directory declare a
+          # provider", because a root module is not required to declare one and
+          # that test gives the wrong answer for configurations that rely on the
+          # implicit default.
+          while IFS= read -r lock; do
+            case "$lock" in
+              */modules/*)
+                echo "::error file=$lock::Lock file in a child module; Terraform never reads it."
+                fail=1
+                ;;
+            esac
+          done < <(git ls-files '*.terraform.lock.hcl')
+
+          # Each committed lock must cover the three platforms this is built
+          # and run on. One h1 hash means it was generated on somebody's laptop
+          # and will fail on a Linux runner with a checksum error that reads
+          # like a corrupted download.
+          while IFS= read -r lock; do
+            n=$(grep -c '"h1:' "$lock" || true)
+            if [ "$n" -lt 3 ]; then
+              echo "::error file=$lock::Only $n platform hash(es). Run: terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64"
+              fail=1
+            else
+              echo "ok  $lock  ($n platforms)"
+            fi
+          done < <(git ls-files '*.terraform.lock.hcl')
+
           exit $fail
