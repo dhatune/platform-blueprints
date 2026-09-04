@@ -44,6 +44,30 @@ named systems, with the cost understood.
 Logs worth keeping for years are exported to object storage rather than kept in
 the logging service, where the same bytes cost a fraction.
 
+## How this was actually found
+
+Not by an alert. By reading the bill every day.
+
+The monitoring line was consuming more than it should have, which was visible
+only because somebody was looking at the invoice as a habit rather than in
+response to something. Following that line back led to the cause: the cluster
+had been created with only the older configuration fields set, and left that
+way the platform turns on every billable metric package it has. Nobody chose
+it. It arrived with the default.
+
+The numbers were 629 million samples a month, about 450 dollars a year, with no
+alert policy, no dashboard and no collection rule of our own consuming any of
+it. The charge existed from the first sample, because that particular meter has
+no free allowance. Meanwhile the metrics anyone actually looks at — processor,
+memory, disk, restarts — are free and arrive with the smallest configuration.
+
+The fix was one field, applied without recreating anything.
+
+What matters here is not the amount, which is small. It is that **no threshold
+would have caught it.** A budget alert fires when spending crosses a line, and
+this never crossed one: it was steady, unremarkable and permanent. It was found
+because a person read the bill on a day when nothing was wrong.
+
 ## Alternatives considered
 
 **Keep everything and shorten retention.** The common approach and the one that
