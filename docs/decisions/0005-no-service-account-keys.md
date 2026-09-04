@@ -28,6 +28,26 @@ Access is obtained by:
 - **Attached identities** for workloads inside the provider, which receive
   credentials from the metadata service and never see a file.
 
+## The part that is worse than the leak
+
+The risk everyone names is that a key falls into the wrong hands. It is real,
+and a key in the wrong hands is a disaster in production rather than an
+incident, because a key authenticates whoever holds it with no further question.
+
+The part that gets less attention is what happens next.
+
+Keys are not easy to govern. Once one exists it is copied, and the copies are
+not tracked. So when one has to be revoked, and eventually one does, nobody can
+say with confidence what is using it. Revoking it stops the leak and stops
+whatever legitimate thing was depending on it, which means products break and
+customers are affected by the remedy.
+
+That is the argument. Not only that a key can be stolen, but that the fix for a
+stolen key is itself damaging, and the damage lands on people who had nothing
+to do with it. A credential whose removal is an outage is a credential nobody
+will remove promptly, which is how a compromised key stays valid for weeks
+while somebody works out what depends on it.
+
 ## Alternatives considered
 
 **Keys with a rotation policy.** Reduces the window rather than closing it, and

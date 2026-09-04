@@ -28,6 +28,27 @@ space, so a network added later cannot reach an existing one by default.
 Each network has its own private DNS zone, so a name resolved in one
 environment cannot resolve to an address in the other.
 
+## The reasons beyond the technical one
+
+The argument above is about what a rule cannot guarantee. There are three more,
+and in a real organisation they usually carry the decision.
+
+**Governance.** Separate networks give each environment an owner and a boundary
+that can be pointed at. With one network and a set of rules, the boundary is an
+argument about configuration that nobody owns.
+
+**Management.** Environments are operated differently. They are changed at
+different times, by different people, with different tolerance for being broken.
+Sharing a network means every change is a change to both.
+
+**Compliance.** Auditors and regulations ask how environments are separated, and
+the answer "there are rules" invites a review of every rule. The answer "they
+are separate networks with no route between them" is a shorter conversation, and
+in regulated work the length of that conversation is a real cost.
+
+None of these are the reason the design is correct. They are the reasons it gets
+approved, which is a different and equally necessary thing.
+
 ## Alternatives considered
 
 **One VPC, separate subnets, deny rules between them.** The default choice, and
