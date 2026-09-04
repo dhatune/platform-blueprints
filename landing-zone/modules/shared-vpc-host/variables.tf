@@ -47,3 +47,23 @@ variable "internal_ingress_ports" {
   type        = list(string)
   default     = ["22", "443"]
 }
+
+variable "health_check_ranges" {
+  description = <<-EOT
+    Source ranges the platform's load balancer probes come from. These are
+    fixed and published; they are listed rather than hardcoded so that a
+    different platform, or a change to them, is a value and not an edit.
+  EOT
+  type        = list(string)
+  default     = ["35.191.0.0/16", "130.211.0.0/22"]
+}
+
+variable "health_check_ports" {
+  description = <<-EOT
+    Ports the probes are allowed to reach. Kept to what workloads actually
+    serve on: allowing every port would make the probe ranges a general path
+    into the network rather than a narrow one.
+  EOT
+  type        = list(string)
+  default     = ["80", "443", "8080"]
+}

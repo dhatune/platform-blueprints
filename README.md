@@ -191,7 +191,7 @@ and is named here rather than left to be noticed.
 that cost something annotated, a persistent DNS zone, and the reasoning about
 benches. Not deployed from this repository yet, and it says so.
 
-**`docs/decisions`** — thirteen decisions, each with what was rejected and what
+**`docs/decisions`** — twenty-two decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 
 **`.github/workflows`** — checks that run without credentials, which is exactly
@@ -241,6 +241,15 @@ short, dated, and state what was rejected as well as what was chosen.
 11. [A constraint is not a role](docs/decisions/0011-a-constraint-is-not-a-role.md)
 12. [The images a cluster runs come from a registry we control](docs/decisions/0012-images-come-from-our-own-registry.md)
 13. [The blast radius is the bench, not the site](docs/decisions/0013-the-blast-radius-is-the-bench.md)
+14. [What logs cost is decided at ingestion, not at deletion](docs/decisions/0014-log-retention-is-decided-at-ingestion.md)
+15. [One access matrix, applied to every system](docs/decisions/0015-one-access-matrix-applied-everywhere.md)
+16. [Internal tools are protected by identity, not network position](docs/decisions/0016-identity-aware-access-not-a-network-perimeter.md)
+17. [How a serverless workload reaches a private service](docs/decisions/0017-how-serverless-workloads-reach-private-services.md)
+18. [Billing detail is exported on the first day](docs/decisions/0018-billing-export-is-not-retroactive.md)
+19. [A second factor on every account](docs/decisions/0019-a-second-factor-on-every-account.md)
+20. [A managed application firewall in front of anything public](docs/decisions/0020-a-managed-firewall-in-front-of-public-services.md)
+21. [The security posture service is read on a schedule](docs/decisions/0021-security-posture-is-read-on-a-schedule.md)
+22. [Secrets are referenced, never passed through a deployment tool](docs/decisions/0022-secrets-are-referenced-never-passed.md)
 
 ---
 

@@ -90,6 +90,37 @@ resource "google_compute_firewall" "allow_internal" {
 # Denying ingress explicitly documents the posture. GCP already defaults to
 # deny, but an explicit low-priority rule survives someone adding an allow
 # rule with a careless priority.
+# The platform's own health checkers have to reach the workloads, and they do
+# not come from inside the subnet.
+#
+# Without this, a default-deny network hosts anything that talks only to itself
+# and nothing at all behind a managed load balancer. The way it fails is the
+# problem: the application is running, the pod answers correctly when asked
+# directly, and every external request returns 503. Nothing in that picture
+# points at a firewall.
+#
+# The addresses are fixed, published ranges belonging to the platform's probing
+# infrastructure rather than to anyone else, so allowing them is narrower than
+# it looks. What it does open is real: any port a workload serves becomes
+# reachable from those ranges, which is why this is restricted to the ports
+# that actually serve traffic rather than to everything.
+resource "google_compute_firewall" "allow_health_checks" {
+  for_each = var.networks
+
+  name        = "${each.key}-allow-health-checks"
+  project     = var.project_id
+  network     = google_compute_network.this[each.key].name
+  description = "Allow the platform's load balancer health probes into ${each.key}."
+  priority    = 900
+
+  source_ranges = var.health_check_ranges
+
+  allow {
+    protocol = "tcp"
+    ports    = var.health_check_ports
+  }
+}
+
 resource "google_compute_firewall" "deny_all_ingress" {
   for_each = var.networks
 

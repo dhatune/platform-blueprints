@@ -82,6 +82,51 @@ is not enough on its own, because the map is read back from the cache service;
 that service has to be restarted. It reads as a broken deployment and it is a
 stale key.
 
+## Getting in the first time, and what that costs
+
+The administrative password is set when the site is created and is **not stored
+anywhere you can read it back**. There is no secret holding it. If it was not
+written down at creation, it cannot be retrieved — only replaced, by running a
+command against the bench:
+
+```
+bench --site <site> set-admin-password <new>
+```
+
+That is the honest answer, and there is a second half to it.
+
+**A password passed as a chart value does not merely pass through.** The release
+history is stored in the cluster, and the values used are stored with it, in
+clear. Anyone who can read secrets in that namespace can recover the password
+that was supplied at install — including the database's, and including after
+the person who set it has left. It survives upgrades, because the history does.
+
+So the credential ends up in a place nobody chose, with an access policy nobody
+reviewed. The fix is not to look for a better way to pass it: it is to not pass
+it. Create the site out of band with a value taken from a secret manager, or
+create the secret first and reference it, so the chart never holds it.
+
+This is worth checking wherever a chart takes a password as a value, which is
+most of them.
+
+## Who should be able to reach this at all
+
+An ERP holds payroll, banking details and customer records. Two decisions
+follow, and they are separate.
+
+**Every account has a second factor.** Not the administrators' accounts, every
+account. The reason is that the interesting way in is rarely the administrator:
+it is a salesperson's password reused from somewhere that was breached, and a
+single-factor login turns that into access. This is a property of the identity
+provider rather than of this application, which is why it belongs to the
+organisation and not to a deployment.
+
+**Access is through an identity-aware proxy** when the system is critical
+enough that reaching the login page at all should require being someone. That
+is a stronger statement than a strong password: it means an unauthenticated
+request never arrives, so a flaw in the application's own login cannot be
+reached by a stranger. ADR 16 and ADR 19 cover both sides.
+
 ## Status
 
 In progress. The Helm values and the decisions are here; this has not been

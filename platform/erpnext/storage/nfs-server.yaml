@@ -1,24 +1,76 @@
 # An NFS server inside the cluster, providing the ReadWriteMany volume the
-# bench needs.
+# bench needs, and the storage class that hands it out.
 #
 # Read the trade-off in this section's README before adopting this. In short:
-# it costs about two orders of magnitude less than a managed file service and
+# it costs about two orders of magnitude less than a managed file service, and
 # it is a single point of failure holding state. When this pod is gone, every
 # web process, worker and scheduler loses its filesystem at the same instant.
 #
-# The manifests below are written to make that failure as short and as
-# survivable as it can be, which is not the same as making it unlikely.
+# The image is the one maintained by the Kubernetes storage group. Two things
+# about that choice are worth knowing.
+#
+# It runs NFS-Ganesha, a server in userspace, so it does not need a privileged
+# container — two capabilities are enough. A kernel NFS server needs to write
+# the host's export table and therefore needs full privilege. If you are going
+# to run storage in your cluster, the userspace one asks for less.
+#
+# And it is a server and a provisioner in one. The server alone would give a
+# filesystem that somebody has to write PersistentVolumes for by hand; this
+# also watches for claims and creates them, which is what makes the storage
+# class below mean anything.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: storage
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nfs-provisioner
+  namespace: storage
+---
+# It creates PersistentVolumes, so it needs to be allowed to. This is the
+# reason to keep it in its own namespace: the permissions are cluster-wide and
+# nothing else here needs them.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nfs-provisioner
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services", "endpoints"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nfs-provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: nfs-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: nfs-provisioner
+    namespace: storage
+---
 # The disk this serves from. ReadWriteOnce, because exactly one pod mounts it —
-# the NFS server is what turns a single-attach disk into a shared filesystem.
+# turning a single-attach disk into a shared filesystem is the whole job.
 #
-# It is also why the server cannot be moved quickly: relocating the pod means
-# detaching this disk from one node and attaching it to another, and that is
-# minutes rather than seconds.
+# It is also why the server cannot move quickly: relocating the pod detaches
+# this disk from one node and attaches it to another, and that is minutes.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -29,51 +81,95 @@ spec:
   resources:
     requests:
       storage: 50Gi
-  # Use a storage class that survives the node. A local disk here would make an
-  # already single point of failure also a permanent one.
   storageClassName: REPLACE_ME
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-provisioner
+  namespace: storage
+  labels:
+    app: nfs-provisioner
+spec:
+  selector:
+    app: nfs-provisioner
+  ports:
+    - { name: nfs, port: 2049 }
+    - { name: nfs-udp, port: 2049, protocol: UDP }
+    - { name: nlockmgr, port: 32803 }
+    - { name: nlockmgr-udp, port: 32803, protocol: UDP }
+    - { name: mountd, port: 20048 }
+    - { name: mountd-udp, port: 20048, protocol: UDP }
+    - { name: rquotad, port: 875 }
+    - { name: rquotad-udp, port: 875, protocol: UDP }
+    - { name: rpcbind, port: 111 }
+    - { name: rpcbind-udp, port: 111, protocol: UDP }
+    - { name: statd, port: 662 }
+    - { name: statd-udp, port: 662, protocol: UDP }
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nfs-server
+  name: nfs-provisioner
   namespace: storage
 spec:
   replicas: 1
-  # Never more than one, and never two at once. Two servers backed by one disk
-  # is not high availability; it is two processes writing the same filesystem
-  # with no coordination. Recreate rather than RollingUpdate is what enforces
-  # that during an update.
+  # Never two. Two servers backed by one disk is not high availability, it is
+  # two processes writing one filesystem with no coordination between them.
+  # Recreate is what stops an update from briefly running both.
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: nfs-server
+      app: nfs-provisioner
   template:
     metadata:
       labels:
-        app: nfs-server
+        app: nfs-provisioner
     spec:
-      # The clients of this server are pods that will hang, not fail, when it
-      # goes away. Shortening how long the cluster waits before rescheduling it
-      # is the difference between a short outage and a long one.
+      serviceAccountName: nfs-provisioner
+      # Clients block rather than error when this goes away, so how long the
+      # cluster waits before rescheduling is the difference between a short
+      # outage and a long one.
       terminationGracePeriodSeconds: 10
       containers:
-        - name: nfs-server
-          image: registry.k8s.io/volume-nfs:0.8
+        - name: nfs-provisioner
+          image: registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8
           ports:
             - { name: nfs, containerPort: 2049 }
+            - { name: nfs-udp, containerPort: 2049, protocol: UDP }
+            - { name: nlockmgr, containerPort: 32803 }
+            - { name: nlockmgr-udp, containerPort: 32803, protocol: UDP }
             - { name: mountd, containerPort: 20048 }
+            - { name: mountd-udp, containerPort: 20048, protocol: UDP }
+            - { name: rquotad, containerPort: 875 }
+            - { name: rquotad-udp, containerPort: 875, protocol: UDP }
             - { name: rpcbind, containerPort: 111 }
+            - { name: rpcbind-udp, containerPort: 111, protocol: UDP }
+            - { name: statd, containerPort: 662 }
+            - { name: statd-udp, containerPort: 662, protocol: UDP }
           securityContext:
-            # An NFS server needs to manipulate the kernel's export table, so
-            # this one genuinely requires privilege. That is a real cost of
-            # this choice and it belongs in the decision, not in a footnote:
-            # a managed file service needs no privileged pod in your cluster.
-            privileged: true
+            # Not privileged. A userspace server needs to read across
+            # ownership boundaries and raise its file descriptor limit, and
+            # nothing else.
+            capabilities:
+              add: ["DAC_READ_SEARCH", "SYS_RESOURCE"]
+          args:
+            - "-provisioner=example.com/nfs"
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: SERVICE_NAME
+              value: nfs-provisioner
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           volumeMounts:
-            - name: backing
-              mountPath: /exports
+            - name: export
+              mountPath: /export
           resources:
             requests:
               cpu: 100m
@@ -81,22 +177,17 @@ spec:
             limits:
               memory: 1Gi
       volumes:
-        - name: backing
+        - name: export
           persistentVolumeClaim:
             claimName: nfs-backing
 ---
-apiVersion: v1
-kind: Service
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
 metadata:
-  name: nfs-server
-  namespace: storage
-spec:
-  # A stable address matters more here than usual. Clients hold the server's
-  # address in an active mount; if it changes, existing mounts do not follow.
-  clusterIP: None
-  selector:
-    app: nfs-server
-  ports:
-    - { name: nfs, port: 2049 }
-    - { name: mountd, port: 20048 }
-    - { name: rpcbind, port: 111 }
+  name: nfs
+provisioner: example.com/nfs
+# Delete, because these volumes hold a bench that can be rebuilt. For anything
+# whose loss would be expensive, Retain and accept the manual cleanup.
+reclaimPolicy: Delete
+mountOptions:
+  - vers=4.1
