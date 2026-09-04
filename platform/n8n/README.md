@@ -57,6 +57,17 @@ phase. Redeployed, the restart count is zero.
 This is the kind of thing that only appears when the manifest is actually run.
 `kubectl apply --dry-run` reports it as valid, because it is.
 
+## A gap this section has
+
+The workload's image can come from a registry inside the organisation, and in
+the verified run it did — mirrored and pinned by digest, exactly as ADR 12
+argues. The database image beside it still names a public registry.
+
+That is inconsistent, and it is left visible rather than quietly corrected
+because it is the ordinary shape of the failure: the rule gets applied to the
+thing everyone is looking at and not to what sits next to it. Anyone adopting
+this should mirror both.
+
 ## What you have to supply
 
 A secret with the database password and the encryption key, a database that is

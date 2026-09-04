@@ -143,37 +143,73 @@ Constraints are applied before access is granted. A grant made while they were
 absent was never checked against them, and applying them afterwards does not
 revoke it.
 
-## Applied and destroyed
+## Applied and destroyed, twice
 
-This was applied to a real organisation, into an isolated folder, and then torn
-down. Thirty resources planned, twenty-three created before the run stopped,
-everything removed afterwards.
+Applied to a real organisation into an isolated folder and torn down, twice.
+The first run stopped part-way; the second carried a cluster and a workload.
 
-The exercise is recorded because of what it found. All of it passed
-`terraform fmt` and `terraform validate` beforehand, which is exactly the
-point: neither of those runs a plan against a real API.
+All of it passed `terraform fmt` and `terraform validate` beforehand, both
+times, which is the point: neither runs a plan against an API that answers
+back.
 
-**A key built from values that do not exist yet.** The subnet grants were keyed
-by subnet id and member, both produced by other resources in the same run, so
-Terraform could not determine the map before applying. The module could not be
+### What the first run found
+
+**A key built from values that do not exist yet.** Subnet grants were keyed by
+subnet id and member, both produced by other resources in the same run, so
+Terraform could not build the map before applying and the module could not be
 applied from scratch at all. Keys are positional now, with the trade-off
-written next to them.
+written beside them.
 
-**Two modules that refused to be destroyed.** Folders and projects both carried
-their protection as a constant rather than a variable. A blueprint that cannot
-be torn down cannot be tried, and something nobody can try gets adopted without
-being understood. Both are variables now, still protective by default.
+**Two modules that refused to be destroyed.** Folders and projects carried
+their protection as a constant. A blueprint that cannot be torn down cannot be
+tried, and what nobody tries gets adopted without being understood.
 
-**An undeclared API.** The network module creates private DNS zones without
-declaring that the API has to be enabled on the project it is given. Enabling
-an API also takes minutes to propagate, so the first apply after enabling one
-fails and the retry succeeds.
+**An undeclared API, and a race.** The network module creates private DNS zones
+without declaring the API it needs. Enabling an API also takes minutes to
+propagate, so a run that enables one and uses it immediately fails and the
+retry succeeds.
 
-**A permission that lives above the stack.** Enabling a Shared VPC host needs a
+**A permission living above the stack.** Enabling a Shared VPC host needs a
 role granted at the organisation, which neither `roles/owner` nor
-`roles/resourcemanager.organizationAdmin` includes. The failure names the permission and not the role.
+`roles/resourcemanager.organizationAdmin` includes.
 
-Shared VPC attachment itself is therefore still unverified: the run stopped at
-that permission rather than granting a new organisation-level role to finish a
-throwaway test.
+### What the second run found, and proved
 
+With that role granted, the second run went further and reached what the first
+never did.
+
+**The subnets could not host a cluster.** A VPC-native cluster draws pod and
+service addresses from secondary ranges on the subnet, and the module had no
+way to declare them. A Shared VPC that cannot host Kubernetes is missing the
+most common reason to have one. Secondary ranges are optional inputs now.
+
+**The API race again, a third time**, on the registry this time. Three
+occurrences in one afternoon is a pattern rather than bad luck: enabling an API
+and using it in the same apply is not reliable, and the retry is part of the
+procedure rather than a workaround.
+
+**Shared VPC attachment, finally verified.** A cluster ran in one project with
+its network in another:
+
+```
+host of the service project   the host project, confirmed by the API
+cluster                       RUNNING, using the host's network and subnet
+secondary ranges              in use; without them it cannot be created
+workload                      three services answering, schema created
+image                         from the organisation's own registry, by digest
+```
+
+**And the teardown failed once**, which is the same shape as the API race and
+worth naming together with it. Deleting the cluster returns before the instance
+groups behind it are gone, and a service project cannot be detached from a
+Shared VPC host while anything still references the shared network. The destroy
+stopped there and succeeded on the retry.
+
+Four occurrences in one afternoon of the same underlying thing: a cloud
+operation reports completion before the state it describes is true. Enabling an
+API, deleting a cluster — the call returns, the effect lands later. Retrying is
+part of the procedure here rather than a workaround for it, and any automation
+built on top has to assume it.
+
+Everything was then destroyed, and the projects are in the deletion state the
+platform gives them.

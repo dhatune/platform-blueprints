@@ -69,6 +69,9 @@ terraform validate            valid
 provider lock                 linux_amd64, darwin_arm64, darwin_amd64
 refused at plan time          primitive roles, an applier that can change IAM,
                               a domain name where a customer ID belongs
+applied and destroyed         twice, against a real organisation; the second
+                              run carried a cluster on the shared network and
+                              a workload pulling from the org's own registry
 ```
 
 → [Read it](landing-zone/)
@@ -216,6 +219,7 @@ short, dated, and state what was rejected as well as what was chosen.
 9. [One workload, several entrances with different locks](docs/decisions/0009-one-workload-several-doors.md)
 10. [Bindings go to groups, never to people](docs/decisions/0010-bindings-go-to-groups.md)
 11. [A constraint is not a role](docs/decisions/0011-a-constraint-is-not-a-role.md)
+12. [The images a cluster runs come from a registry we control](docs/decisions/0012-images-come-from-our-own-registry.md)
 
 ---
 

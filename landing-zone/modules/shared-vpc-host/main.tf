@@ -47,6 +47,15 @@ resource "google_compute_subnetwork" "this" {
   # alternative is a NAT gateway, which costs money and widens egress.
   private_ip_google_access = true
 
+  dynamic "secondary_ip_range" {
+    for_each = each.value.secondary_ranges
+
+    content {
+      range_name    = secondary_ip_range.key
+      ip_cidr_range = secondary_ip_range.value
+    }
+  }
+
   log_config {
     aggregation_interval = "INTERVAL_10_MIN"
     flow_sampling        = 0.5

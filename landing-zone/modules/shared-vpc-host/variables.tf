@@ -18,6 +18,15 @@ variable "networks" {
   EOT
   type = map(object({
     subnet_cidr = string
+
+    # Secondary ranges, needed by anything that assigns addresses from the
+    # subnet rather than to it — a VPC-native Kubernetes cluster being the
+    # usual reason, since it draws pod and service addresses from here.
+    #
+    # Optional because not every environment runs one, and empty because a
+    # default set of ranges would silently consume address space that the
+    # caller may have planned for something else.
+    secondary_ranges = optional(map(string), {})
   }))
 
   validation {
