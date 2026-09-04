@@ -211,5 +211,16 @@ API, deleting a cluster — the call returns, the effect lands later. Retrying i
 part of the procedure here rather than a workaround for it, and any automation
 built on top has to assume it.
 
-Everything was then destroyed, and the projects are in the deletion state the
-platform gives them.
+Everything was then destroyed, and the projects entered the deletion state the
+platform gives them — which produced one more finding on the next attempt.
+
+**A destroyed project's identifier is not free again.** It is held for thirty
+days while the deletion completes, and creating a project with the same
+identifier fails as already existing. So applying this a second time with the
+same values does not work: `destroy` followed by `apply` is idempotent for
+every resource here except the projects, whose names have to change.
+
+That is worth knowing before building anything that tears down and rebuilds on
+a schedule. A test environment recreated nightly needs a fresh identifier every
+night, and identifiers are permanent — the estate accumulates thirty days of
+names that can never be used again.
