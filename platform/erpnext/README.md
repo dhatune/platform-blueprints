@@ -29,6 +29,7 @@ another one change. See ADR 13.
 
 ```
 helm/    values for the upstream chart, with the choices that matter annotated
+storage/ an in-cluster NFS server, and what it costs to run one
 dns/     a separate zone for the hostnames a cluster publishes into, kept
          apart from the one serving the domain itself
 ```

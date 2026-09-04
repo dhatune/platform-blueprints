@@ -1,0 +1,102 @@
+# An NFS server inside the cluster, providing the ReadWriteMany volume the
+# bench needs.
+#
+# Read the trade-off in this section's README before adopting this. In short:
+# it costs about two orders of magnitude less than a managed file service and
+# it is a single point of failure holding state. When this pod is gone, every
+# web process, worker and scheduler loses its filesystem at the same instant.
+#
+# The manifests below are written to make that failure as short and as
+# survivable as it can be, which is not the same as making it unlikely.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage
+---
+# The disk this serves from. ReadWriteOnce, because exactly one pod mounts it —
+# the NFS server is what turns a single-attach disk into a shared filesystem.
+#
+# It is also why the server cannot be moved quickly: relocating the pod means
+# detaching this disk from one node and attaching it to another, and that is
+# minutes rather than seconds.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-backing
+  namespace: storage
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 50Gi
+  # Use a storage class that survives the node. A local disk here would make an
+  # already single point of failure also a permanent one.
+  storageClassName: REPLACE_ME
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-server
+  namespace: storage
+spec:
+  replicas: 1
+  # Never more than one, and never two at once. Two servers backed by one disk
+  # is not high availability; it is two processes writing the same filesystem
+  # with no coordination. Recreate rather than RollingUpdate is what enforces
+  # that during an update.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nfs-server
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+    spec:
+      # The clients of this server are pods that will hang, not fail, when it
+      # goes away. Shortening how long the cluster waits before rescheduling it
+      # is the difference between a short outage and a long one.
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: nfs-server
+          image: registry.k8s.io/volume-nfs:0.8
+          ports:
+            - { name: nfs, containerPort: 2049 }
+            - { name: mountd, containerPort: 20048 }
+            - { name: rpcbind, containerPort: 111 }
+          securityContext:
+            # An NFS server needs to manipulate the kernel's export table, so
+            # this one genuinely requires privilege. That is a real cost of
+            # this choice and it belongs in the decision, not in a footnote:
+            # a managed file service needs no privileged pod in your cluster.
+            privileged: true
+          volumeMounts:
+            - name: backing
+              mountPath: /exports
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: backing
+          persistentVolumeClaim:
+            claimName: nfs-backing
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-server
+  namespace: storage
+spec:
+  # A stable address matters more here than usual. Clients hold the server's
+  # address in an active mount; if it changes, existing mounts do not follow.
+  clusterIP: None
+  selector:
+    app: nfs-server
+  ports:
+    - { name: nfs, port: 2049 }
+    - { name: mountd, port: 20048 }
+    - { name: rpcbind, port: 111 }
