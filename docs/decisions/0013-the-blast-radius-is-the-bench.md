@@ -39,6 +39,26 @@ overlap — it gets its own bench. That means its own deployment, its own
 storage, its own database, and its own image, rather than another folder in an
 existing installation.
 
+## When two companies can share a site at all
+
+Before the bench question there is a smaller one, and in practice it comes up
+first.
+
+If they belong to the same group, the two companies can keep their accounting
+in one site. But if each one operates differently — one needs a point of sale,
+one needs a website, one needs its accounting kept private, one needs features
+the other never uses — then it needs its own site.
+
+So the test is not whether they are related on paper. It is whether they are
+run the same way. Two companies under one owner that sell the same thing the
+same way can share. Two that share an owner and nothing else cannot, and
+putting them together means every feature enabled for one is present for the
+other, and the person doing the books for one can see the other.
+
+That decision is separate from the bench, and it is the one people get wrong
+first, because a shared site looks like a saving and the cost only appears
+later when one of them needs something the other does not want.
+
 ## Alternatives considered
 
 **One bench for everything, with careful coordination.** Cheapest to run and it
