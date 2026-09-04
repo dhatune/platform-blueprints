@@ -18,13 +18,17 @@ image:
 # a requirement rather than a preference, and it is the largest recurring cost
 # in the deployment.
 #
-# On a managed platform this usually means a file service billed by provisioned
-# capacity with a floor well above what a small deployment uses — you pay for
-# the floor. The alternative is running a provisioner, which is cheaper and
-# means the storage under the ERP is now something you operate.
+# Two answers, and the trade is availability rather than money.
 #
-# Decide this deliberately. It is the value people copy without reading and
-# then meet on the invoice.
+# A managed file service survives a node dying and is billed on provisioned
+# capacity with a floor far above what a bench uses. An NFS server inside the
+# cluster costs one disk instead — about two orders of magnitude less — and is
+# a single point of failure holding state: when it goes, every process here
+# loses its filesystem at once, and moving it between nodes means detaching a
+# single-attach disk, which is minutes of downtime during an ordinary upgrade.
+#
+# Pick by whether an hour of the ERP being unavailable during a node event is
+# acceptable, not by the invoice. For an internal system it usually is.
 persistence:
   worker:
     enabled: true

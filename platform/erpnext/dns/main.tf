@@ -1,14 +1,29 @@
-# A persistent zone for the hostnames workloads publish into.
+# A separate zone for the hostnames workloads publish into.
 #
-# This is deliberately separate from anything a cluster creates and destroys.
-# A managed zone is assigned its nameservers when it is created, and the parent
-# domain delegates to those specific names. Destroying and recreating the zone
-# gets a different set, which silently breaks the delegation until somebody
-# updates it by hand.
+# The obvious thing is to point the cluster's DNS automation at the zone that
+# already serves the domain. It needs no delegation and it works immediately.
+# It also hands write access to the zone holding the domain's mail records, its
+# website, and everything else, to a controller that reconciles state in a loop.
 #
-# So the zone outlives the clusters that write into it. Records inside it are
-# created and removed automatically by whatever runs in the cluster; the zone
-# itself is created once and left alone.
+# That controller has a mode which deletes records it does not recognise. It is
+# not the default, and it is a single flag away, and the flag is set by someone
+# trying to make deleted services stop resolving. A wrong filter alongside it
+# removes the mail records of a company that was not deploying anything at the
+# time.
+#
+# A delegated subdomain keeps that blast radius to hostnames that were created
+# by automation in the first place. Nothing the business depends on lives in it,
+# so the worst case is that services stop resolving until the controller runs
+# again.
+#
+# The cost is one delegation, performed once by a person, and it is the whole
+# argument against doing it.
+#
+# This zone is also deliberately separate from anything a cluster creates and
+# destroys. A managed zone is assigned its nameservers at creation and the
+# parent delegates to those exact names; recreating the zone gets a different
+# set and the delegation points at nothing, silently, until somebody notices
+# that a hostname stopped resolving.
 
 resource "google_dns_managed_zone" "public" {
   project     = var.project_id

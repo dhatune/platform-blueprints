@@ -29,7 +29,8 @@ another one change. See ADR 13.
 
 ```
 helm/    values for the upstream chart, with the choices that matter annotated
-dns/     a persistent zone for the hostnames a cluster publishes into
+dns/     a separate zone for the hostnames a cluster publishes into, kept
+         apart from the one serving the domain itself
 ```
 
 The chart is not vendored here. Pinning a copy of somebody else's chart in this
@@ -42,11 +43,35 @@ scheduler, and the services they need. A site is created by running a command
 against that bench, once, and it is the step people expect to be declarative
 and is not. Treat it as a migration rather than as configuration.
 
-**Choose your storage.** The sites directory is written by the web process, the
-scheduler and every background worker, and they do not run on the same node. It
-therefore needs `ReadWriteMany`, which on most clouds means a managed file
-service that is not cheap, or a provisioner you now operate. This is the single
-largest cost decision in the deployment and the chart leaves it to a value.
+**Choose your storage, and understand what you are choosing.** The sites
+directory is written by the web process, the scheduler and every background
+worker, and they do not run on the same node. It needs `ReadWriteMany`, and
+there are two honest answers.
+
+A **managed file service** is the one that survives a node dying. It is also
+billed by provisioned capacity with a floor far above what a bench uses, so a
+deployment holding twenty gigabytes pays for the floor — often more than the
+rest of the cluster combined.
+
+An **NFS server inside the cluster** costs one disk instead, which is roughly
+two orders of magnitude less, and it works. It is what a small deployment
+should probably do. What it costs is not money:
+
+- It is a single point of failure holding state. When that pod goes, every web
+  process, worker and scheduler loses its filesystem at the same instant. The
+  ERP does not degrade, it stops.
+- It is backed by a single-attach disk, so the pod runs on one node and moving
+  it means detaching and reattaching that disk. That is minutes of downtime
+  during an ordinary node upgrade, not just during a failure.
+- Clients hold stale handles across a server restart. Pods that were running
+  when it went away often need restarting themselves, which turns a short
+  storage blip into a full restart of the deployment.
+- Backups and the storage's own upgrades are now yours.
+
+The deciding question is not cost. It is whether an hour of the ERP being down
+during a node event is acceptable. For an internal system at a small company it
+usually is, and the in-cluster answer is right. For anything customer-facing,
+it is not, and the invoice is the cheaper problem.
 
 **Tell you that the cache holds a map of your assets.** After the image
 changes, the asset filenames change with it, and the cached map still points at
