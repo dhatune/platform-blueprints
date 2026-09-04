@@ -23,9 +23,54 @@ So every section here carries the same three things:
 
 ---
 
+## How the pieces fit
+
+An editable version is in [`docs/diagrams/`](docs/diagrams/). Every element
+below was applied to a real organisation and then destroyed.
+
+```mermaid
+flowchart TB
+    net([Internet]) --> armor[Cloud Armor<br/>managed rules, rate limit<br/>preview before enforcing]
+    armor --> lb[Global load balancer<br/>built from a Gateway<br/>TLS terminated here]
+
+    subgraph org [Organisation]
+        subgraph shared [Folder: shared]
+            subgraph host [Host project]
+                prod[VPC prod<br/>+ pod and service ranges]
+                dev[VPC dev]
+                fw[Firewall: default deny<br/>plus health probe ranges]
+                reg[Artifact Registry]
+                sec[Secret Manager<br/>containers only, never values]
+            end
+        end
+        subgraph product [Folder: product]
+            subgraph svc [Service project]
+                gke[GKE cluster<br/>runs on the host's subnet]
+                nfs[NFS pod<br/>ReadWriteMany from one disk]
+                app[Workload]
+                ctl[external-dns · cert-manager<br/>one identity, no keys]
+            end
+        end
+    end
+
+    lb -. health probes .-> app
+    gke --> prod
+    app --> nfs
+    app --> reg
+    ctl --> dns[(Cloud DNS<br/>zone in a third project)]
+    ctl --> ca([Certificate authority])
+
+    prod x-.-x dev
+```
+
+The crossed line between the two networks is the point of ADR 4: they are not
+peered, so there is no route to permit or deny. The dashed probe path is what
+the default-deny firewall blocked, which took a working application and made it
+return 503 to everyone.
+
 ## Contents
 
-### `patterns/llm-ports` — available now
+### `patterns/llm-ports`
 
 Provider-agnostic access to language models through ports and adapters.
 
@@ -47,7 +92,7 @@ down rather than quietly fixed.
 
 → [Read it](patterns/llm-ports/)
 
-### `landing-zone` — available now
+### `landing-zone`
 
 The organisation layout a platform sits on: folder hierarchy, a Shared VPC host
 with two physically isolated networks, and one project per product per
@@ -76,7 +121,7 @@ applied and destroyed         twice, against a real organisation; the second
 
 → [Read it](landing-zone/)
 
-### `platform/vaultwarden` — available now
+### `platform/vaultwarden`
 
 A password manager, deployed the way one has to be. Every other service here
 can be rebuilt from backup if it breaks; this one holds the credentials to
@@ -105,7 +150,7 @@ not verified               neither variant has been deployed to a cluster
 
 → [Read it](platform/vaultwarden/)
 
-### `platform/n8n` — available now
+### `platform/n8n`
 
 Workflow automation on Kubernetes: all state in Postgres, three entrances with
 three different locks, and an encryption key whose loss costs every stored
@@ -131,7 +176,7 @@ deploy. An init container fixes it.
 
 → [Read it](platform/n8n/)
 
-### `platform/erpnext` — in progress
+### `platform/erpnext`
 
 An ERP deployed with the upstream Helm chart, which is the correct way to
 install it and the reason the interesting decisions are all about what the

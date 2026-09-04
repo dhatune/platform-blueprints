@@ -1,0 +1,9 @@
+# Every change needs review from the owner. This is a small repository with one
+# maintainer, so this is less about workload distribution than about making an
+# unreviewed push to the default branch impossible rather than merely unusual.
+*       @dhatune
+
+# The decisions are the part with the longest useful life and the part most
+# likely to be wrong in a way that survives. They are called out separately so
+# a change to one is never approved as part of a larger diff.
+/docs/decisions/    @dhatune

@@ -1,0 +1,99 @@
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram id="landing-zone" name="Landing zone">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="org" value="Organisation" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#4A5568;dashed=1;verticalAlign=top;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="820" height="700" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fshared" value="Folder: shared" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#A0AEC0;verticalAlign=top;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="190" width="380" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="hostproj" value="Host project" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDF2F7;strokeColor=#718096;verticalAlign=top;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="230" width="340" height="560" as="geometry" />
+        </mxCell>
+
+        <mxCell id="vpcprod" value="VPC prod&#10;10.10.0.0/20&#10;secondary: pods, services" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6FFFA;strokeColor=#319795;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="270" width="300" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="vpcdev" value="VPC dev&#10;10.20.0.0/20" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF5F5;strokeColor=#C53030;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="380" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nopeer" value="no peering, no route between them" style="text;html=1;align=center;fontSize=11;fontStyle=2;fontColor=#718096;" vertex="1" parent="1">
+          <mxGeometry x="110" y="440" width="300" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fw" value="Firewall: default deny&#10;+ health probe ranges&#10;35.191.0.0/16, 130.211.0.0/22" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFAF0;strokeColor=#DD6B20;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="480" width="300" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ar" value="Artifact Registry&#10;standard + pull-through cache" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EBF8FF;strokeColor=#2B6CB0;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="570" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="sm" value="Secret Manager&#10;containers and grants only, never values" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EBF8FF;strokeColor=#2B6CB0;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="650" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="op" value="Org policies: no keys, no public IP,&#10;no public buckets, domain restriction" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#6B46C1;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="110" y="730" width="300" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fprod" value="Folder: product" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#A0AEC0;verticalAlign=top;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="190" width="350" height="620" as="geometry" />
+        </mxCell>
+        <mxCell id="appproj" value="Service project&#10;attached to the host's Shared VPC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EDF2F7;strokeColor=#718096;verticalAlign=top;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="230" width="310" height="560" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gke" value="GKE cluster&#10;Gateway API, Workload Identity&#10;runs on the host's subnet" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6FFFA;strokeColor=#319795;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="520" y="280" width="270" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="nfs" value="NFS server pod&#10;single-attach disk, exported ReadWriteMany&#10;single point of failure holding state" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFAF0;strokeColor=#DD6B20;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="390" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="wl" value="Workload&#10;web, scheduler, workers&#10;all mounting the shared volume" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0FFF4;strokeColor=#38A169;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="480" width="250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="Database" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F0FFF4;strokeColor=#38A169;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="580" width="250" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl" value="external-dns  ·  cert-manager&#10;one identity, no keys" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#6B46C1;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="650" width="250" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="net" value="Internet" style="ellipse;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#4A5568;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="150" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="armor" value="Cloud Armor&#10;managed rule sets, rate limit&#10;preview before enforcing" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF5F5;strokeColor=#C53030;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="940" y="260" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="lb" value="Global load balancer&#10;from the Gateway resource&#10;TLS terminated here" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EBF8FF;strokeColor=#2B6CB0;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="940" y="370" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dns" value="Cloud DNS&#10;zone in a third project&#10;written by external-dns, upsert only" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#6B46C1;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="940" y="490" width="240" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="acme" value="Certificate authority" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7FAFC;strokeColor=#718096;align=left;spacingLeft=8;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="940" y="610" width="240" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4A5568;" edge="1" parent="1" source="net" target="armor"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#4A5568;" edge="1" parent="1" source="armor" target="lb"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="health probes" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#DD6B20;dashed=1;fontSize=10;" edge="1" parent="1" source="lb" target="wl"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" value="publishes A record" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#6B46C1;fontSize=10;" edge="1" parent="1" source="ctrl" target="dns"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" value="DNS-01 challenge" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#6B46C1;fontSize=10;" edge="1" parent="1" source="ctrl" target="acme"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" value="uses subnet" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#319795;fontSize=10;" edge="1" parent="1" source="gke" target="vpcprod"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="pulls images" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2B6CB0;fontSize=10;" edge="1" parent="1" source="wl" target="ar"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="mounts" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#DD6B20;fontSize=10;" edge="1" parent="1" source="wl" target="nfs"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="title" value="Landing zone — as built and verified" style="text;html=1;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sub" value="Every element here was applied to a real organisation and destroyed. Dashed edges are the paths that failed first." style="text;html=1;fontSize=12;fontColor=#718096;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="900" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
