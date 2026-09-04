@@ -131,11 +131,27 @@ deploy. An init container fixes it.
 
 → [Read it](platform/n8n/)
 
+### `platform/erpnext` — in progress
+
+An ERP deployed with the upstream Helm chart, which is the correct way to
+install it and the reason the interesting decisions are all about what the
+chart leaves to you.
+
+The section exists for one idea. The framework installs into a **bench**: one
+copy of the code and one runtime, with many sites sharing it. A site has its
+own database and its own data, so it looks like a tenant boundary — and for
+anything version-shaped it is not one. Upgrading the image upgrades the code
+under every site at once, and adding an application for one site changes the
+bench all of them run on.
+
+The blast radius is the bench, not the site. ADR 13.
+
+→ [Read it](platform/erpnext/)
+
 ### Planned
 
 | Section | What it will cover |
 |---|---|
-| `platform/erpnext/` | ERPNext deployment with managed secrets, least-privilege service account, private networking and verified backups |
 | `platform/chatwoot/` | Customer conversation platform, same security baseline |
 | `platform/docuseal/` | Electronic signature, same security baseline |
 
@@ -171,7 +187,11 @@ down. Take it and it will come up. It has no gateway, no certificate, and no
 backup for its database, which sits oddly beside ADR 7 in this same repository
 and is named here rather than left to be noticed.
 
-**`docs/decisions`** — eleven decisions, each with what was rejected and what
+**`platform/erpnext`** — Helm values for the upstream chart with the choices
+that cost something annotated, a persistent DNS zone, and the reasoning about
+benches. Not deployed from this repository yet, and it says so.
+
+**`docs/decisions`** — thirteen decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 
 **`.github/workflows`** — checks that run without credentials, which is exactly
@@ -220,6 +240,7 @@ short, dated, and state what was rejected as well as what was chosen.
 10. [Bindings go to groups, never to people](docs/decisions/0010-bindings-go-to-groups.md)
 11. [A constraint is not a role](docs/decisions/0011-a-constraint-is-not-a-role.md)
 12. [The images a cluster runs come from a registry we control](docs/decisions/0012-images-come-from-our-own-registry.md)
+13. [The blast radius is the bench, not the site](docs/decisions/0013-the-blast-radius-is-the-bench.md)
 
 ---
 

@@ -1,0 +1,107 @@
+# Values for the upstream frappe/erpnext chart.
+#
+# Only the settings where the default is wrong, or where the choice costs
+# something worth knowing about, are set here. Everything omitted is left to
+# the chart on purpose: a values file that restates defaults hides the few
+# lines that are actually decisions.
+
+image:
+  repository: REPLACE_ME/erpnext
+  # A tag, then a digest, resolved from the registry rather than copied from a
+  # document. The image is the bench: changing it changes the code under every
+  # site at once, so it is the single most consequential value in this file.
+  tag: v15
+  pullPolicy: IfNotPresent
+
+# The sites directory is written by the web process, the scheduler and every
+# background worker, and those do not share a node. ReadWriteMany is therefore
+# a requirement rather than a preference, and it is the largest recurring cost
+# in the deployment.
+#
+# On a managed platform this usually means a file service billed by provisioned
+# capacity with a floor well above what a small deployment uses — you pay for
+# the floor. The alternative is running a provisioner, which is cheaper and
+# means the storage under the ERP is now something you operate.
+#
+# Decide this deliberately. It is the value people copy without reading and
+# then meet on the invoice.
+persistence:
+  worker:
+    enabled: true
+    storageClass: REPLACE_ME_RWX
+    size: 20Gi
+  logs:
+    enabled: true
+    storageClass: REPLACE_ME_RWX
+    size: 5Gi
+
+# The bundled database is for trying the chart, not for running on it. It has
+# no backup, no failover and no maintenance window that anyone owns, and it
+# stores every transaction the business has. Point at a managed instance.
+mariadb:
+  enabled: false
+
+dbHost: REPLACE_ME
+dbPort: 3306
+
+# Redis carries the queue, the scheduler's locks and the cache. The cache also
+# holds the map of asset filenames, which is why it has to be restarted after
+# an image change and not merely flushed from the application. Bundled here
+# because losing it costs a restart rather than data.
+redis-cache:
+  enabled: true
+redis-queue:
+  enabled: true
+
+jobs:
+  # Runs on install and after every upgrade. This is the step that applies
+  # schema migrations, and it is the reason an upgrade is a maintenance window
+  # rather than a rollout.
+  migrate:
+    enabled: true
+    backup: true
+
+  # Deliberately disabled. Creating a site is a one-time act with a password
+  # and a database behind it, not something to re-run on every deployment.
+  # Create sites explicitly and record that you did.
+  createSite:
+    enabled: false
+
+worker:
+  gunicorn:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+
+  # Exactly one scheduler, and this is not a value to raise. It is the process
+  # that decides which background jobs are due; two of them will decide the
+  # same job is due twice. The chart does not stop you.
+  scheduler:
+    replicaCount: 1
+
+  default:
+    replicaCount: 1
+  long:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        # Report generation and imports are held in memory by the worker that
+        # runs them. A limit sized to the idle process kills long jobs part-way
+        # through, and the job is recorded as failed with no error in the log
+        # because nothing failed — the process was removed.
+        memory: 4Gi
+  short:
+    replicaCount: 1
+
+ingress:
+  # Left off. Routing, certificates and DNS belong to the platform rather than
+  # to this chart, and an ingress defined here is one the platform's own
+  # gateway does not know about.
+  enabled: false
