@@ -28,6 +28,28 @@ target for consolidation, and the temptation is strongest for exactly the
 workload where interruption is least visible — nobody watches a scheduled job
 the way they watch a web service.
 
+## Two reasons, and the second one is the common one
+
+The argument above is about work in flight: an eviction leaves an execution
+half done, and half done is not the same as rolled back.
+
+There is a second reason, and in practice it is the one that decides it.
+
+The thing was being used all the time, in the operation, to serve requests that
+had to be executed when they arrived. If it was not available, there were
+problems — not later, not in a report, immediately.
+
+That is a different property from whether work can be resumed. A batch job that
+runs at three in the morning can be evicted and retried at four and nobody
+notices. Something answering requests as they come in has to be *there*, and
+"there" is exactly what interruptible capacity does not promise.
+
+It is worth separating them because they lead to different fixes. Work that
+cannot be interrupted safely can be made safe, with queues and idempotency and
+workers that can be lost. Something that has to be present when a request
+arrives cannot be fixed that way: it either has capacity that is not taken away
+or it does not.
+
 ## Decision
 
 The workload runs on non-preemptible capacity, and the reason is written in the
