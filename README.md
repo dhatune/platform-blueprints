@@ -141,6 +141,8 @@ Sections are published when they are finished, not when they are started.
 
 ## Ground rules
 
+Each of these is checked on every push. A rule nobody checks is a preference.
+
 **Nothing here is copied from a live environment.** No project identifiers, no
 organisation or billing identifiers, no domains, no client names. Every example
 value is fictional and every credential is a placeholder.

@@ -1,0 +1,160 @@
+# What this can and cannot catch.
+#
+# Everything here runs without credentials and without a cluster, which bounds
+# it precisely: it checks that the code is well formed, internally consistent,
+# and free of anything that should not be published. It does not check that the
+# infrastructure works.
+#
+# That distinction is not academic. Applying this repository's landing zone to
+# a real organisation found four defects that every check below passes: a
+# resource key built from values that do not exist until apply, two modules
+# that refused to be destroyed, an API used without being declared, and a
+# permission that has to be granted above the stack. None of them are visible
+# without a real API answering back.
+#
+# So this pipeline is a floor, not a proof. It is here to stop the boring
+# failures — a stray secret, a broken link, an unformatted file, a real
+# hostname copied in from somewhere it should not be — so that review time goes
+# to the things it cannot see.
+
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks needs history to scan commits, not only the working tree.
+          # A secret removed in a later commit is still a leaked secret.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  no-real-identifiers:
+    name: no real identifiers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse anything traceable to a live environment
+        run: |
+          # The repository's ground rule says no project identifiers, no
+          # domains, no client names. A rule nobody checks is a preference,
+          # so it is checked here.
+          #
+          # The list is deliberately specific rather than clever. A general
+          # pattern for "looks like a real hostname" would flag every example,
+          # and a check that cries wolf gets deleted.
+          # The author's surname is not on the list. The repository is his and
+          # carries his name; what must not appear is an environment: project
+          # prefixes, company domains, live hostnames.
+          #
+          # This file is excluded because it contains the patterns themselves,
+          # and a check that fails on its own definition teaches people to
+          # ignore it.
+          patterns='htn-|hatun\.io|confiadigital|caferelieve|flows\.|spar\.'
+          if grep -rniE "$patterns" \
+               --exclude-dir=.git --exclude-dir=.terraform \
+               --exclude='*.lock.hcl' \
+               --exclude='checks.yml' . ; then
+            echo "::error::Found something traceable to a live environment."
+            exit 1
+          fi
+          echo "Nothing traceable found."
+
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: patterns/llm-ports
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]" pytest mypy
+      - name: Tests
+        run: pytest -q
+      - name: Types
+        # --strict, because the default mode does not inspect the bodies of
+        # unannotated functions and would pass a file it never really read.
+        run: mypy --strict src/
+
+  terraform:
+    name: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Format
+        run: terraform fmt -check -recursive .
+      - name: Validate every module and composition
+        run: |
+          set -e
+          for dir in landing-zone/modules/*/ landing-zone/example platform/vaultwarden/cloud-run; do
+            echo "--- $dir"
+            terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+            terraform -chdir="$dir" validate
+          done
+
+  kubernetes:
+    name: kubernetes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifests against the API schemas
+        run: |
+          # kubeconform checks the manifests against real Kubernetes schemas,
+          # which catches a misspelled field that a YAML parser accepts happily.
+          curl -sSL -o kubeconform.tar.gz \
+            https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar xzf kubeconform.tar.gz kubeconform
+          ./kubeconform -summary -strict -ignore-missing-schemas \
+            platform/n8n/base platform/vaultwarden/deploy
+      - name: Compose the overlays
+        run: |
+          for overlay in platform/n8n/base platform/n8n/test platform/vaultwarden/deploy; do
+            kubectl kustomize "$overlay" >/dev/null && echo "ok  $overlay"
+          done
+
+  shell:
+    name: shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: shellcheck platform/vaultwarden/backup/*.sh
+
+  links:
+    name: links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every relative link resolves
+        run: |
+          fail=0
+          while IFS= read -r file; do
+            while IFS= read -r target; do
+              case "$target" in http*|\#*) continue ;; esac
+              target_path="$(dirname "$file")/${target%%#*}"
+              if [ ! -e "$target_path" ]; then
+                echo "broken: $file -> $target"
+                fail=1
+              fi
+            done < <(grep -oE '\]\([^)]+\)' "$file" | sed 's/](//;s/)$//')
+          done < <(find . -name '*.md' -not -path './.git/*')
+          exit $fail
