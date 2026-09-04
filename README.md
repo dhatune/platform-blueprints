@@ -193,15 +193,6 @@ The blast radius is the bench, not the site. ADR 13.
 
 → [Read it](platform/erpnext/)
 
-### Planned
-
-| Section | What it will cover |
-|---|---|
-| `platform/chatwoot/` | Customer conversation platform, same security baseline |
-| `platform/docuseal/` | Electronic signature, same security baseline |
-
-Sections are published when they are finished, not when they are started.
-
 ---
 
 ## What each part is, and is not
