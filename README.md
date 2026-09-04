@@ -17,9 +17,9 @@ your constraints differ. That gap is where the expensive mistakes live.
 
 So every section here carries the same three things:
 
-- **What it does** — the working implementation.
-- **Why it is built this way** — the decision and the alternative it beat.
-- **What it costs** — the trade-off you are accepting.
+- **What it does**: the working implementation.
+- **Why it is built this way**: the decision and the alternative it beat.
+- **What it costs**: the trade-off you are accepting.
 
 ---
 
@@ -100,7 +100,7 @@ environment.
 
 The environments are separate networks rather than subnets of one, and they are
 not peered. There is no route between production and development to permit or
-deny. That costs real money — anything shared has to be built twice — and it
+deny. That costs real money, anything shared has to be built twice, and it
 buys isolation that survives someone editing a firewall rule.
 
 Access is assigned to groups rather than people, because access has to end when
@@ -135,7 +135,7 @@ corrupt often enough to matter. And a second script restores that backup and
 checks it, because a backup that has never been restored is a belief.
 
 Built twice, for Kubernetes and for Cloud Run, because the platform decides the
-failure mode. Cloud Run can mount a bucket, so persistence is not the problem —
+failure mode. Cloud Run can mount a bucket, so persistence is not the problem , 
 file locking is. SQLite on a mounted bucket runs, capped at one instance
 forever. And the signing key has to leave the container's own filesystem, or
 every new instance generates its own and users are logged out at random.
@@ -157,7 +157,7 @@ three different locks, and an encryption key whose loss costs every stored
 credential even with a perfect database backup.
 
 The section exists for one argument. Everything about this workload says it
-belongs on the cheapest interruptible capacity available — no volume, no local
+belongs on the cheapest interruptible capacity available, no volume, no local
 state, restarts are free. That is right about restarts and wrong about
 executions: an eviction mid-run does not roll anything back, it leaves the work
 half done and records it as crashed.
@@ -184,7 +184,7 @@ chart leaves to you.
 
 The section exists for one idea. The framework installs into a **bench**: one
 copy of the code and one runtime, with many sites sharing it. A site has its
-own database and its own data, so it looks like a tenant boundary — and for
+own database and its own data, so it looks like a tenant boundary, and for
 anything version-shaped it is not one. Upgrading the image upgrades the code
 under every site at once, and adding an application for one site changes the
 bench all of them run on.
@@ -209,37 +209,37 @@ Sections are published when they are finished, not when they are started.
 Written plainly, because a reader deciding whether to use any of this deserves
 to know where it stops.
 
-**`patterns/llm-ports`** — a small Python package showing how to depend on a
+**`patterns/llm-ports`**: a small Python package showing how to depend on a
 port rather than on a provider, with a contract test that runs against a real
 one. Take the shape and the tests. It is not a client library: one adapter, no
 streaming, no tool calling, and ADR 3 explains why those do not belong behind
 the same port.
 
-**`landing-zone`** — five Terraform modules: hierarchy, two isolated networks,
+**`landing-zone`**: five Terraform modules, hierarchy, two isolated networks,
 a project per environment, group-based access, and policy constraints. Enough
 to stand up the shell of an organisation. It has been applied once to a real
 organisation and destroyed, and Shared VPC attachment specifically was never
 reached. There is no compute, no pipeline, no logging destination, no registry
 and no outbound gateway. It is a floor plan, not a building.
 
-**`platform/vaultwarden`** — a password manager for Cloud Run, with the
+**`platform/vaultwarden`**: a password manager for Cloud Run, with the
 Kubernetes variant kept for the comparison. The backup and restore scripts work
 and were exercised against a database built for the purpose, not against a
 running instance. Neither deployment has been run end to end.
 
-**`platform/n8n`** — the only section deployed to a cluster, exercised and torn
+**`platform/n8n`**: the only section deployed to a cluster, exercised and torn
 down. Take it and it will come up. It has no gateway, no certificate, and no
 backup for its database, which sits oddly beside ADR 7 in this same repository
 and is named here rather than left to be noticed.
 
-**`platform/erpnext`** — Helm values for the upstream chart with the choices
+**`platform/erpnext`**: Helm values for the upstream chart with the choices
 that cost something annotated, a persistent DNS zone, and the reasoning about
 benches. Not deployed from this repository yet, and it says so.
 
-**`docs/decisions`** — twenty-two decisions, each with what was rejected and what
+**`docs/decisions`**: twenty-two decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 
-**`.github/workflows`** — checks that run without credentials, which is exactly
+**`.github/workflows`**: checks that run without credentials, which is exactly
 their limit. They catch a stray secret, a broken link, a real hostname, an
 unformatted file. They pass every defect that applying this to a real
 organisation found.

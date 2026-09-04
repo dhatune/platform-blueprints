@@ -5,8 +5,8 @@ metadata:
   namespace: n8n
 spec:
   replicas: 1
-  # Recreate rather than RollingUpdate. Not for the usual reason — the database
-  # is external and would tolerate two pods — but because a workflow that is
+  # Recreate rather than RollingUpdate. Not for the usual reason: the database
+  # is external and would tolerate two pods, but because a workflow that is
   # mid-execution when its pod is replaced does not resume. Recreate keeps the
   # interruption to one window instead of overlapping two.
   strategy:
@@ -25,7 +25,7 @@ spec:
       # Everything about this workload says it belongs there: no persistent
       # volume, all state in Postgres, restarts are safe. That reasoning is
       # correct about restarts and wrong about executions. A preemption during
-      # a running workflow does not roll it back — the execution is recorded
+      # a running workflow does not roll it back: the execution is recorded
       # as crashed, and any side effect it had already performed stays
       # performed. A workflow that sends invoices sends some of them.
       #
@@ -113,7 +113,7 @@ spec:
               # workflow that assembles images holds them in memory inside the
               # execution, so the pod is killed part-way through a run. The
               # execution is marked crashed and the logs show no error, because
-              # the process did not fail — it was removed.
+              # the process did not fail, it was removed.
               memory: 2Gi
           startupProbe:
             httpGet:

@@ -1,7 +1,7 @@
 # Vaultwarden on Cloud Run.
 #
 # The same service as the Kubernetes variant, with one difference that changes
-# everything else — and it is easy to state wrongly.
+# everything else, and it is easy to state wrongly.
 #
 # Cloud Run is not without persistence. A bucket can be mounted into the
 # container and it outlives the instance. What is missing is POSIX file

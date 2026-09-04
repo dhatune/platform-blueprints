@@ -4,7 +4,7 @@
 #
 # First: bindings are made to groups, never to individuals. This is not
 # tidiness. Access has to end when a person leaves, and that has to happen in
-# one place — the directory — rather than by searching every folder and project
+# one place, the directory, rather than by searching every folder and project
 # in the organisation for their address. A binding to a person is a promise
 # that somebody will remember to remove it, and that promise is kept for about
 # as long as the person is remembered.

@@ -3,7 +3,7 @@
 # Everything else in this landing zone is a grant: someone is given a role, and
 # anyone who can grant roles can grant a different one. A constraint is the
 # other kind of control. It is a limit rather than a permission, and a project
-# owner cannot remove it — only somebody with authority over the policy itself,
+# owner cannot remove it, only somebody with authority over the policy itself,
 # at a level above the project, can.
 #
 # That distinction is why this module exists. It is the difference between a
@@ -12,7 +12,7 @@
 # Makes the no-keys decision real rather than aspirational.
 #
 # Without this, "we do not use service account keys" is a convention, and
-# conventions are broken by whoever is unblocking a deployment at midnight —
+# conventions are broken by whoever is unblocking a deployment at midnight , 
 # correctly, from their point of view, because the alternative is a broken
 # deployment. The constraint moves that decision out of the moment.
 resource "google_org_policy_policy" "no_service_account_keys" {
@@ -52,8 +52,8 @@ resource "google_org_policy_policy" "allowed_domains" {
 # A public address is the difference between a host that is exposed to the
 # internet and one that is not, and it is set by whoever creates the machine,
 # usually by accepting a default. Denying it here means reaching a workload
-# from outside requires deliberately building a way in — a load balancer, a
-# gateway — which is a reviewable act rather than a checkbox.
+# from outside requires deliberately building a way in: a load balancer, a
+# gateway, which is a reviewable act rather than a checkbox.
 resource "google_org_policy_policy" "no_external_ip" {
   name   = "${var.parent}/policies/compute.vmExternalIpAccess"
   parent = var.parent

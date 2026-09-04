@@ -11,7 +11,7 @@ ERPNext's unit of deployment is not the site. It is the **bench**.
 A bench is one installation of the framework: a directory holding the code of
 every application, one language runtime, and a folder per site. Sites in the
 same bench have separate databases and separate data, and they share everything
-else — the same application code, the same runtime, the same container image.
+else: the same application code, the same runtime, the same container image.
 
 That distinction decides the shape of every operational question that follows.
 
@@ -51,7 +51,7 @@ there are two honest answers.
 
 A **managed file service** is the one that survives a node dying. It is also
 billed by provisioned capacity with a floor far above what a bench uses, so a
-deployment holding twenty gigabytes pays for the floor — often more than the
+deployment holding twenty gigabytes pays for the floor, often more than the
 rest of the cluster combined.
 
 An **NFS server inside the cluster** costs one disk instead, which is roughly
@@ -86,7 +86,7 @@ stale key.
 
 The administrative password is set when the site is created and is **not stored
 anywhere you can read it back**. There is no secret holding it. If it was not
-written down at creation, it cannot be retrieved — only replaced, by running a
+written down at creation, it cannot be retrieved, only replaced, by running a
 command against the bench:
 
 ```
@@ -98,7 +98,7 @@ That is the honest answer, and there is a second half to it.
 **A password passed as a chart value does not merely pass through.** The release
 history is stored in the cluster, and the values used are stored with it, in
 clear. Anyone who can read secrets in that namespace can recover the password
-that was supplied at install — including the database's, and including after
+that was supplied at install: including the database's, and including after
 the person who set it has left. It survives upgrades, because the history does.
 
 So the credential ends up in a place nobody chose, with an access policy nobody

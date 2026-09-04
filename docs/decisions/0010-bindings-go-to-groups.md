@@ -10,7 +10,7 @@ The cost arrives later and somewhere else.
 
 When that person changes teams or leaves, their access has to end. If the
 binding names them directly, ending it means finding every place their address
-appears — across folders, projects, buckets, secrets, databases — and removing
+appears, across folders, projects, buckets, secrets, databases, and removing
 each one. Nobody does this reliably, because nobody knows the full list. What
 actually happens is that the obvious grants are removed and the rest stay,
 indefinitely, attached to an account that may still exist.
@@ -36,7 +36,7 @@ privilege regardless of what the rest of its configuration says.
 
 **Direct bindings with a periodic audit.** This is what most organisations
 actually do. It works to the extent the audit runs and someone acts on it, and
-it fails in the gap between a person leaving and the next audit — which is
+it fails in the gap between a person leaving and the next audit, which is
 exactly the window that matters.
 
 **Direct bindings with an expiry condition**, so a grant lapses on its own.
@@ -53,7 +53,7 @@ Expect pressure to make an exception "just this once", usually during an
 incident.
 
 The model is only as good as the directory. If group membership is unmanaged,
-this moves the problem rather than solving it — a group that nobody prunes is a
+this moves the problem rather than solving it: a group that nobody prunes is a
 direct binding with extra steps.
 
 Automation identities are the exception, since a service account is not a

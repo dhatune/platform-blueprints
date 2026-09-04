@@ -111,7 +111,7 @@ person. This is not tidiness. When someone leaves, their access has to end, and
 if bindings name individuals that means finding every place their address
 appears across the whole estate. Nobody does that reliably. A group makes it one
 action in one place. Primitive roles are refused at plan time, and so is any
-attempt to give the applying identity a role that could change IAM policy —
+attempt to give the applying identity a role that could change IAM policy , 
 because an identity that can widen its own access makes the approval gate in
 front of it decorative.
 
@@ -207,12 +207,12 @@ stopped there and succeeded on the retry.
 
 Four occurrences in one afternoon of the same underlying thing: a cloud
 operation reports completion before the state it describes is true. Enabling an
-API, deleting a cluster — the call returns, the effect lands later. Retrying is
+API, deleting a cluster: the call returns, the effect lands later. Retrying is
 part of the procedure here rather than a workaround for it, and any automation
 built on top has to assume it.
 
 Everything was then destroyed, and the projects entered the deletion state the
-platform gives them — which produced one more finding on the next attempt.
+platform gives them, which produced one more finding on the next attempt.
 
 **A destroyed project's identifier is not free again.** It is held for thirty
 days while the deletion completes, and creating a project with the same
@@ -222,5 +222,5 @@ every resource here except the projects, whose names have to change.
 
 That is worth knowing before building anything that tears down and rebuilds on
 a schedule. A test environment recreated nightly needs a fresh identifier every
-night, and identifiers are permanent — the estate accumulates thirty days of
+night, and identifiers are permanent: the estate accumulates thirty days of
 names that can never be used again.

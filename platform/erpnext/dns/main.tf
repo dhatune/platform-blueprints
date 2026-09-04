@@ -40,7 +40,7 @@ resource "google_dns_managed_zone" "public" {
 
 # The delegation itself cannot be created here, and that is not a limitation to
 # work around. The parent domain is authoritative somewhere else, and pointing
-# a subdomain at these nameservers is an act performed wherever that is —
+# a subdomain at these nameservers is an act performed wherever that is , 
 # usually a registrar's console, by a person, once.
 output "delegate_these_nameservers" {
   description = <<-EOT

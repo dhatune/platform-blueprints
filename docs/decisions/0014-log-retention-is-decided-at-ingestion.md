@@ -9,8 +9,8 @@ Logging is billed on what is accepted, not on what is kept. Shortening
 retention after the fact reduces what is stored and does nothing about the
 larger number, which was charged when the line arrived.
 
-This inverts the usual instinct. The question that feels responsible — "how
-long should we keep these?" — is the second question. The first is which lines
+This inverts the usual instinct. The question that feels responsible, "how
+long should we keep these?", is the second question. The first is which lines
 should be accepted at all.
 
 Three things make this expensive quietly.
@@ -24,7 +24,7 @@ the workloads it observes.
 
 Defaults are generous. A managed platform will happily accept every log its
 components emit, and the configuration that controls this is often several
-fields rather than one — leaving any of them unset accepts everything.
+fields rather than one, leaving any of them unset accepts everything.
 
 And the bill arrives detached from the cause. The line is written by a
 component nobody chose, in a project nobody is watching, and the invoice says
@@ -58,8 +58,8 @@ it. It arrived with the default.
 The numbers were 629 million samples a month, about 450 dollars a year, with no
 alert policy, no dashboard and no collection rule of our own consuming any of
 it. The charge existed from the first sample, because that particular meter has
-no free allowance. Meanwhile the metrics anyone actually looks at — processor,
-memory, disk, restarts — are free and arrive with the smallest configuration.
+no free allowance. Meanwhile the metrics anyone actually looks at, processor,
+memory, disk, restarts, are free and arrive with the smallest configuration.
 
 The fix was one field, applied without recreating anything.
 

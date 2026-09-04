@@ -75,8 +75,8 @@ pytest -m contract  # against a real provider, when credentials are present
 
 `--strict` is the claim worth making. The default mode does not even inspect the
 bodies of unannotated functions, so passing it means little. Strict mode demands
-that every parameter and return is annotated, including the injected seams — the
-clock and the HTTP opener — which are exactly the places a codebase tends to
+that every parameter and return is annotated, including the injected seams, the
+clock and the HTTP opener, which are exactly the places a codebase tends to
 leave untyped.
 
 ## What the first live call found
@@ -98,7 +98,7 @@ The first call to a real provider found all seven:
 | 6 | An empty answer from an exhausted budget classified as a malformed request |
 | 7 | The output budget derived from the requested word count |
 
-Four of them — 1, 3, 5 and 6 — are the same mistake repeated: shapes assumed
+Four of them, 1, 3, 5 and 6, are the same mistake repeated: shapes assumed
 where they should have been configured. The adapter promised to absorb
 differences between providers and honoured that promise only in the direction
 its author thought to look.
@@ -155,7 +155,7 @@ retry policy makes the situation worse rather than better.
 This is not hypothetical. While these contract tests were being written, a key
 moved from rate limiting to quota exhaustion and the retry loop kept going,
 consuming what was left. Telling the two apart requires reading the provider's
-error message, which is provider-specific by definition — the sort of knowledge
+error message, which is provider-specific by definition: the sort of knowledge
 a port is meant to keep out.
 
 Two honest options, neither free:
@@ -172,7 +172,7 @@ it does not do is pretend the distinction is not there.
 ## Also deliberately not here
 
 No retry-with-jitter, no circuit breaker, no token counting, no caching, no
-async, and no total-operation timeout — the 30-second budget is per request, so
+async, and no total-operation timeout: the 30-second budget is per request, so
 retries extend the wall clock. All of them belong in production and all of them
 would obscure the one idea this is meant to show. The seam is the point; what
 you hang off it is context-dependent.

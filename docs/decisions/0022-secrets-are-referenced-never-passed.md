@@ -18,7 +18,7 @@ access policy and no audit trail.
 
 A password given to a deployment tool as a value is stored in that tool's
 release history inside the cluster, in clear. Anyone who can read secrets in
-that namespace can recover it — including the database's, including after the
+that namespace can recover it: including the database's, including after the
 person who set it has left, and it survives every upgrade because the history
 does.
 

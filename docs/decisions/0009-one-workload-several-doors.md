@@ -10,7 +10,7 @@ authentication posture.
 
 People use the editor, and it should sit behind the organisation's single
 sign-on like every other internal tool. External systems call webhooks, and
-they have no identity in that sign-on — putting the webhook behind it means the
+they have no identity in that sign-on, putting the webhook behind it means the
 webhook stops working. Internal automation calls an API, which wants a token
 rather than an interactive login.
 
@@ -38,7 +38,7 @@ policy, silently.
 **Separate deployments per posture.** The cleanest isolation, and it would allow
 the webhook entrance to run with fewer permissions than the editor. It was
 rejected because the instances would share one database and one encryption key,
-so the isolation is mostly apparent — and it triples the operational surface for
+so the isolation is mostly apparent, and it triples the operational surface for
 that appearance.
 
 ## Consequences

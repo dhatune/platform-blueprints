@@ -31,8 +31,8 @@ environment cannot resolve to an address in the other.
 ## Alternatives considered
 
 **One VPC, separate subnets, deny rules between them.** The default choice, and
-adequate for many teams. Rejected because the property being protected — that
-development cannot reach production — depends on a rule staying correct through
+adequate for many teams. Rejected because the property being protected, that
+development cannot reach production, depends on a rule staying correct through
 every future edit, and rules are edited under time pressure by people who do
 not know why the rule is there.
 

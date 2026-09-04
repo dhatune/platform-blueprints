@@ -5,7 +5,7 @@
 
 ## Context
 
-Internal tools — dashboards, admin panels, workflow builders — need to be
+Internal tools, dashboards, admin panels, workflow builders, need to be
 reachable by a handful of people and by nobody else. The traditional answer is
 network position: a virtual private network, or an address allowlist, so that
 being on the inside is what grants access.
@@ -36,7 +36,7 @@ no address allowlist and no private network to join.
 Webhook endpoints called by external systems cannot authenticate this way and
 are the exception. They are separated at the routing layer so the exception
 applies to one path rather than to the whole service, and each one authenticates
-its caller itself — see ADR 9.
+its caller itself, see ADR 9.
 
 ## Alternatives considered
 
@@ -46,7 +46,7 @@ failure mode is people bypassing it under pressure.
 
 **An address allowlist.** Cheap and better than nothing. Rejected as a primary
 control because a home address changes, so the list is edited under pressure by
-someone who needs access now — and lists edited that way are widened and not
+someone who needs access now, and lists edited that way are widened and not
 narrowed afterwards.
 
 **Authentication in each application.** What most tools offer natively. Rejected

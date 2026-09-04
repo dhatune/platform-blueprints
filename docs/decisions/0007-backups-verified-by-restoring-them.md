@@ -42,7 +42,7 @@ script. A backup that worked last quarter is evidence about last quarter.
 ## Alternatives considered
 
 **Checking that the backup file exists and is not empty.** This is the common
-default. It catches a job that stopped running and nothing else — in
+default. It catches a job that stopped running and nothing else, in
 particular it passes cleanly for a torn SQLite copy, which is the failure
 actually worth catching.
 

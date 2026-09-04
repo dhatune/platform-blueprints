@@ -30,7 +30,7 @@ guarding it.
 The operations the panel performs are done another way. User invitations go
 through the normal invitation flow, which is available to organisation
 administrators through the ordinary authenticated interface. The rarer
-operations — deleting a user, inspecting diagnostics — are performed by
+operations, deleting a user, inspecting diagnostics, are performed by
 executing a command against the running container, which requires cluster
 access that is already governed.
 
@@ -68,4 +68,4 @@ which is slower than editing a form.
 This decision suits an organisation small enough that administrative operations
 are rare. A larger deployment, where user administration happens weekly, should
 revisit it and put an authenticating proxy in front of the panel rather than
-live with the friction — or worse, quietly re-enable the token.
+live with the friction, or worse, quietly re-enable the token.

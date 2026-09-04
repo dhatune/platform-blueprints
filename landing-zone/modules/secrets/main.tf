@@ -15,8 +15,8 @@
 # every upgrade and the departure of whoever set it. Nobody chose that location
 # and nobody reviewed its access policy.
 #
-# So versions are created out of band — by a person, from a generator, piped in
-# rather than typed — and this module holds only the container and the grants.
+# So versions are created out of band, by a person, from a generator, piped in
+# rather than typed, and this module holds only the container and the grants.
 
 resource "google_secret_manager_secret" "this" {
   for_each = var.secrets
@@ -80,7 +80,7 @@ resource "google_secret_manager_secret" "this" {
 
 # Access is granted per secret. A project-level grant gives a reader every
 # secret the project will ever hold, including the ones added after the grant
-# was reviewed — which is how a service ends up able to read credentials for
+# was reviewed, which is how a service ends up able to read credentials for
 # systems it has no relationship with.
 resource "google_secret_manager_secret_iam_member" "accessors" {
   for_each = {

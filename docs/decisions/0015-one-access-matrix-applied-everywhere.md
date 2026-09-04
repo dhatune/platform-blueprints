@@ -41,7 +41,7 @@ never compared to reality documents an intention.
 ## Alternatives considered
 
 **Per-system ownership with periodic review.** How most organisations work. It
-functions while each system has an attentive owner and fails at the seams —
+functions while each system has an attentive owner and fails at the seams , 
 which is where the compounding risk lives, since no single owner sees a
 combination.
 
@@ -54,7 +54,7 @@ different permissions inside a system, and the provider cannot see that.
 
 The matrix is work with no visible output. It is maintained by someone whose
 reward for doing it well is that nothing happens, and it decays first at the
-edges — a small tool added quickly, a contractor granted access directly.
+edges: a small tool added quickly, a contractor granted access directly.
 
 It also makes refusals explicit. Once written down, "this role does not reach
 that system" is a statement somebody has to defend, rather than a grant that

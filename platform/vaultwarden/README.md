@@ -49,7 +49,7 @@ on each platform is more useful than either manifest alone.
 Both enforce the same decisions. What differs is everything underneath, and the
 reason is one constraint that is easy to state imprecisely.
 
-Cloud Run is not without persistence — a bucket can be mounted into the
+Cloud Run is not without persistence: a bucket can be mounted into the
 container and it survives the instance. What it does not have is a filesystem
 with POSIX locking. A mounted bucket presents files, not the locks a database
 uses to keep two writers from interleaving. So the question is never "where do
@@ -101,7 +101,7 @@ on the next instance unless they are on the mount.
 Neither is safer. They make different mistakes easy, and the choice comes down
 to which mistake you would rather be exposed to.
 
-Kubernetes lets you keep SQLite, which is simpler and genuinely adequate here —
+Kubernetes lets you keep SQLite, which is simpler and genuinely adequate here , 
 but it puts the burden on you to prevent a second replica, and the enforcement
 is a volume access mode and an update strategy rather than anything obvious.
 Get it wrong and the database corrupts quietly.

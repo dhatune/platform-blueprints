@@ -25,7 +25,7 @@ There is a second cost that is easy to miss. This kind of service is usually
 one of the smallest workloads on a cluster, so its resource request is often
 the last thing keeping an additional node alive. That makes it a tempting
 target for consolidation, and the temptation is strongest for exactly the
-workload where interruption is least visible — nobody watches a scheduled job
+workload where interruption is least visible, nobody watches a scheduled job
 the way they watch a web service.
 
 ## Two reasons, and the second one is the common one
@@ -37,7 +37,7 @@ There is a second reason, and in practice it is the one that decides it.
 
 The thing was being used all the time, in the operation, to serve requests that
 had to be executed when they arrived. If it was not available, there were
-problems — not later, not in a report, immediately.
+problems, not later, not in a report, immediately.
 
 That is a different property from whether work can be resumed. A batch job that
 runs at three in the morning can be evicted and retried at four and nobody

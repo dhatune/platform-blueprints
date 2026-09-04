@@ -22,7 +22,7 @@ image:
 #
 # A managed file service survives a node dying and is billed on provisioned
 # capacity with a floor far above what a bench uses. An NFS server inside the
-# cluster costs one disk instead — about two orders of magnitude less — and is
+# cluster costs one disk instead, about two orders of magnitude less, and is
 # a single point of failure holding state: when it goes, every process here
 # loses its filesystem at once, and moving it between nodes means detaching a
 # single-attach disk, which is minutes of downtime during an ordinary upgrade.
@@ -99,7 +99,7 @@ worker:
         # Report generation and imports are held in memory by the worker that
         # runs them. A limit sized to the idle process kills long jobs part-way
         # through, and the job is recorded as failed with no error in the log
-        # because nothing failed — the process was removed.
+        # because nothing failed: the process was removed.
         memory: 4Gi
   short:
     replicaCount: 1

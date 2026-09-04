@@ -8,7 +8,7 @@
 The framework this ERP is built on installs into a **bench**: one directory
 holding the code of every application, one language runtime, and a folder per
 site. Each site has its own database and its own data. Everything else is
-shared — the same application code, the same runtime, the same container image.
+shared: the same application code, the same runtime, the same container image.
 
 The word for a tenant here is "site", and it behaves like one for data. A site
 cannot read another site's records; backup and restore are per-site; access
@@ -33,9 +33,9 @@ The bench is treated as the unit of isolation. Sites share a bench only when
 they can tolerate moving together: the same framework version, the same
 application versions, the same restart.
 
-When a workload cannot accept that — a different release cadence, a
+When a workload cannot accept that: a different release cadence, a
 requirement that pins a version, an audience whose downtime windows do not
-overlap — it gets its own bench. That means its own deployment, its own
+overlap, it gets its own bench. That means its own deployment, its own
 storage, its own database, and its own image, rather than another folder in an
 existing installation.
 
@@ -45,9 +45,9 @@ Before the bench question there is a smaller one, and in practice it comes up
 first.
 
 If they belong to the same group, the two companies can keep their accounting
-in one site. But if each one operates differently — one needs a point of sale,
+in one site. But if each one operates differently: one needs a point of sale,
 one needs a website, one needs its accounting kept private, one needs features
-the other never uses — then it needs its own site.
+the other never uses, then it needs its own site.
 
 So the test is not whether they are related on paper. It is whether they are
 run the same way. Two companies under one owner that sell the same thing the
@@ -68,8 +68,8 @@ of site A mentions site B, so the constraint is carried in somebody's head and
 is lost the moment that person is on holiday.
 
 **A bench per site, always.** Complete isolation and honest boundaries. Rejected
-because the fixed cost is real — each bench brings its own workers, its own
-scheduler and its own shared storage — and for a handful of sites that move
+because the fixed cost is real, each bench brings its own workers, its own
+scheduler and its own shared storage, and for a handful of sites that move
 together it buys isolation nobody needed.
 
 ## Consequences
@@ -94,5 +94,5 @@ because the application reads the map back from it.
 
 An upgrade runs schema migrations against every site in the bench, one after
 another. That makes an upgrade a maintenance window whose length scales with
-the number of sites, rather than a rollout — which is another way of saying the
+the number of sites, rather than a rollout, which is another way of saying the
 bench, not the site, is the thing being deployed.

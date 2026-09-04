@@ -6,8 +6,8 @@
 ## Context
 
 A managed runtime has no network of its own. When it needs to reach something
-private — a database on an internal address, a service in another network, an
-endpoint on-premises — a path has to be built, and the platform offers several
+private: a database on an internal address, a service in another network, an
+endpoint on-premises: a path has to be built, and the platform offers several
 that are easy to confuse because they all end with traffic arriving.
 
 They differ in what they cost and in which direction they work.
@@ -19,7 +19,7 @@ small throttles, too large is paid for continuously. It is also a component
 that can be unhealthy independently of both sides.
 
 A newer approach attaches the workload to the network directly, with no
-instances in between. Less to pay for, less to size, less to fail — and it is
+instances in between. Less to pay for, less to size, less to fail, and it is
 the right default for the common case, which is a workload reaching a database
 in a network the same organisation controls.
 
@@ -40,7 +40,7 @@ attaches to that network directly. No bridge instances are provisioned for
 that case.
 
 A private endpoint is used when the far side is a published service rather than
-a network — a managed offering, another organisation's service, or something
+a network: a managed offering, another organisation's service, or something
 this side should not be able to reach beyond the one endpoint.
 
 The instance-based bridge is used only where the platform still requires it,
@@ -62,7 +62,7 @@ a rule as the only thing in front of it.
 ## Consequences
 
 Attaching directly means egress leaves through the network, so whatever
-controls that network applies — including the absence of an outbound gateway,
+controls that network applies: including the absence of an outbound gateway,
 which turns "the workload cannot reach the internet" into a surprise at the
 worst time. Deciding what is allowed out is part of this, not separate.
 

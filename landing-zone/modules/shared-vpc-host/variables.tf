@@ -20,7 +20,7 @@ variable "networks" {
     subnet_cidr = string
 
     # Secondary ranges, needed by anything that assigns addresses from the
-    # subnet rather than to it — a VPC-native Kubernetes cluster being the
+    # subnet rather than to it: a VPC-native Kubernetes cluster being the
     # usual reason, since it draws pod and service addresses from here.
     #
     # Optional because not every environment runs one, and empty because a

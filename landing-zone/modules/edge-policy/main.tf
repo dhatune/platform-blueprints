@@ -1,7 +1,7 @@
 # The application firewall that sits in front of anything public.
 #
 # See ADR 20 for why. In short: this is not about the application being
-# careless, it is about what arrives before the application gets a chance —
+# careless, it is about what arrives before the application gets a chance , 
 # and specifically about the window between a vulnerability being disclosed in
 # something you depend on and the fix being deployed.
 

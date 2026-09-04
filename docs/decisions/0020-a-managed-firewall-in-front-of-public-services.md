@@ -16,7 +16,7 @@ arrives before the application has a chance.
 
 Three things it buys. Requests matching known attack shapes are dropped before
 reaching a process, which matters most for a vulnerability disclosed in a
-dependency that has not been patched yet — the window between disclosure and
+dependency that has not been patched yet: the window between disclosure and
 deployment is exactly when this earns its cost. Volume can be limited per
 source, so one client cannot exhaust a service for everyone. And requests are
 recorded at the edge, giving a record of what was attempted rather than only

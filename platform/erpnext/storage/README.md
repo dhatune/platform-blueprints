@@ -28,7 +28,7 @@ The chart's `persistence.*.storageClass` then names `nfs`.
 
 **The server pod moves.** Its disk detaches from one node and attaches to
 another, which takes minutes. Every mount is unresponsive for that whole
-window — processes block on the filesystem rather than erroring, so the pods
+window, processes block on the filesystem rather than erroring, so the pods
 stay Running and answer nothing. Monitoring that watches restarts sees a
 healthy deployment.
 

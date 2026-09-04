@@ -10,7 +10,7 @@
 # about that choice are worth knowing.
 #
 # It runs NFS-Ganesha, a server in userspace, so it does not need a privileged
-# container — two capabilities are enough. A kernel NFS server needs to write
+# container, two capabilities are enough. A kernel NFS server needs to write
 # the host's export table and therefore needs full privilege. If you are going
 # to run storage in your cluster, the userspace one asks for less.
 #
@@ -66,7 +66,7 @@ subjects:
     name: nfs-provisioner
     namespace: storage
 ---
-# The disk this serves from. ReadWriteOnce, because exactly one pod mounts it —
+# The disk this serves from. ReadWriteOnce, because exactly one pod mounts it , 
 # turning a single-attach disk into a shared filesystem is the whole job.
 #
 # It is also why the server cannot move quickly: relocating the pod detaches

@@ -11,7 +11,7 @@ should follow risk, and it is wrong about where the risk is.
 
 The way in is rarely the administrator. It is an ordinary account whose owner
 reused a password that appeared in someone else's breach. That account is not
-interesting on its own, which is exactly why it was left on one factor — and it
+interesting on its own, which is exactly why it was left on one factor, and it
 does not need to be interesting, because it only has to be a foothold. From
 inside, the attacker reads what that person can read, and asks colleagues for
 things using their name.
@@ -29,7 +29,7 @@ Every account carries a second factor, with no exemptions by role or seniority.
 
 Where the second factor lives is the identity provider's problem, not each
 application's. An application that maintains its own accounts is the exception
-to be removed rather than a place to configure this separately — see ADR 15.
+to be removed rather than a place to configure this separately, see ADR 15.
 
 Service accounts and automation are outside this and are covered by not having
 passwords at all, per ADR 5.
@@ -53,7 +53,7 @@ recorded as an exception rather than a setting.
 
 There will be lockouts, and the recovery path is the part that gets designed
 badly under pressure. A recovery flow weaker than the factor it recovers is the
-factor's real strength — this needs deciding before the first person is locked
+factor's real strength, this needs deciding before the first person is locked
 out, not during.
 
 Shared accounts break. That is a benefit disguised as a cost: a shared login

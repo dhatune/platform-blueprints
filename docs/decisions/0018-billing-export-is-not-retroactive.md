@@ -18,7 +18,7 @@ permanently, and no support request recovers it.
 
 That makes this unlike almost every other decision in a platform. Most can be
 deferred at the cost of doing them later. This one is deferred at the cost of
-never being able to answer questions about the period it was deferred through —
+never being able to answer questions about the period it was deferred through , 
 and the questions arrive precisely when spending has become alarming, which is
 after the interesting months have already passed.
 
@@ -60,6 +60,6 @@ it. It is entirely possible to build careful dashboards and change nothing;
 this decision produces the evidence, and acting on it is not automatic.
 
 Labelling is where this decays. The export is only as useful as the labels on
-the resources, and labels are applied by whoever creates a resource — so the
+the resources, and labels are applied by whoever creates a resource, so the
 breakdown quietly degrades as an estate grows, and the fix is enforcement at
 creation rather than a periodic tidy-up.

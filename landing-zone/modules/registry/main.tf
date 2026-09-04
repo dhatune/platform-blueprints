@@ -6,7 +6,7 @@
 #
 # Anonymous pulls from public registries are rate limited, and the limit is per
 # source address. A cluster that scales out, or a node pool that recycles, can
-# exhaust it and then pods stop starting — during an incident, which is exactly
+# exhaust it and then pods stop starting, during an incident, which is exactly
 # when nodes recycle.
 #
 # A tag can be moved. This repository argues that elsewhere and pins by digest

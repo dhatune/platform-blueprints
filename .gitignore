@@ -57,3 +57,4 @@ build/
 # This is narrow on purpose. The lock file of a root module is committed, and
 # that rule is not weakened here.
 landing-zone/modules/*/.terraform.lock.hcl
+platform/*/dns/.terraform.lock.hcl

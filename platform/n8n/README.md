@@ -7,7 +7,7 @@ webhooks, holding credentials for everything it talks to.
 
 n8n keeps all of its state in Postgres. No persistent volume, nothing of
 consequence in the container. Every instinct says this is the ideal candidate
-for the cheapest capacity available — preemptible nodes, aggressive
+for the cheapest capacity available: preemptible nodes, aggressive
 consolidation, restart it whenever.
 
 That instinct is right about restarts and wrong about executions, and the
@@ -60,7 +60,7 @@ This is the kind of thing that only appears when the manifest is actually run.
 ## A gap this section has
 
 The workload's image can come from a registry inside the organisation, and in
-the verified run it did — mirrored and pinned by digest, exactly as ADR 12
+the verified run it did, mirrored and pinned by digest, exactly as ADR 12
 argues. The database image beside it still names a public registry.
 
 That is inconsistent, and it is left visible rather than quietly corrected

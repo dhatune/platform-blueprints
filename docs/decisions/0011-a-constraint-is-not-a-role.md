@@ -7,7 +7,7 @@
 
 Almost everything in a landing zone is a grant. Someone is given a role, and
 the role lets them do something. The property that matters about a grant is
-that anyone who can grant roles can grant a different one — including to
+that anyone who can grant roles can grant a different one: including to
 themselves, if they hold the right role.
 
 This makes most of a landing zone's security a convention. It holds because

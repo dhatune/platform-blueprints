@@ -19,7 +19,7 @@ The application depends on a `LanguageModelPort` protocol. Providers are
 implemented as adapters that satisfy it. Domain types carry no provider
 vocabulary: no model identifiers, no wire formats, no SDK objects.
 
-Exactly one place in the system names a provider — the composition root that
+Exactly one place in the system names a provider: the composition root that
 builds the adapter at startup.
 
 ## Alternatives considered

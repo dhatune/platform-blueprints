@@ -11,7 +11,7 @@ rising order of how badly.
 
 Anonymous pulls from public registries are rate limited, and the limit applies
 per source address. A cluster that scales out, or a node pool that recycles,
-can exhaust it — and then pods stop starting during an incident, which is
+can exhaust it, and then pods stop starting during an incident, which is
 exactly when node pools recycle.
 
 A tag can be moved. This repository pins images by digest elsewhere for that
@@ -32,7 +32,7 @@ A **remote repository** is a caching proxy: the cluster pulls from it, and on a
 miss it fetches upstream and keeps a copy. Nothing to run and nothing to
 schedule. It fixes rate limits and locality on its own.
 
-A **standard repository** holds images put there deliberately — built here, or
+A **standard repository** holds images put there deliberately, built here, or
 copied in at a reviewed digest. Copying is an explicit act with a date and an
 author, and the copy survives whatever happens upstream afterwards.
 
@@ -72,5 +72,5 @@ tags of their own, and removing them breaks the image on every platform.
 
 The rule is only as good as its coverage. In this repository the workload's own
 image was mirrored while its database image was still pulled from a public
-registry — a gap found by running it, not by reading it, and recorded in the
+registry: a gap found by running it, not by reading it, and recorded in the
 n8n section rather than quietly fixed.

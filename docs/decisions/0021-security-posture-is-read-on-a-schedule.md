@@ -16,7 +16,7 @@ rather than laziness. The findings arrive as a list with no owner, most of them
 are about things somebody decided deliberately, and separating those from the
 few that matter takes an afternoon nobody has scheduled. So the list grows, and
 growing makes it less likely to be read, until it is opened for the first time
-during an audit or an incident — when it is a hundred items long and the useful
+during an audit or an incident, when it is a hundred items long and the useful
 one is somewhere in the middle.
 
 The value is not in the findings. It is in the *difference* between this week's
@@ -65,7 +65,7 @@ everything has been accepted reports a clean posture and means nothing. Every
 acceptance needs a date and a re-examination, or it is a way of turning the
 service off slowly.
 
-And this reports on what the platform can see. Anything outside it — a service
-elsewhere, a laptop, an account in an application — is not covered, and reading
+And this reports on what the platform can see. Anything outside it: a service
+elsewhere, a laptop, an account in an application, is not covered, and reading
 a clean report as "we are fine" is a mistake this decision makes easier rather
 than harder.

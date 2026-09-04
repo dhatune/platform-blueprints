@@ -14,12 +14,12 @@ port, and they do not strain it equally.
 
 **Structured output (JSON Schema).** The most portable of the three. Providers
 converged: declare a schema, receive conforming JSON. What leaks is the schema
-dialect — each provider supports a different subset, and constructs like
+dialect, each provider supports a different subset, and constructs like
 `oneOf` or `$ref` are unevenly honoured. Small, containable leak.
 
 **Tool use.** Middling. The overall shape converged: declare tools with a name
 and a parameter schema, the model requests a call, the caller executes it and
-feeds the result back. What differs is edge semantics — whether parallel calls
+feeds the result back. What differs is edge semantics, whether parallel calls
 are allowed, how a result is reinjected into the conversation, what "force this
 tool" actually guarantees. Abstractable with effort; leaks at the edges.
 
@@ -60,7 +60,7 @@ which is the opposite of what a single widening interface does.
 
 **One port with optional capabilities.** Callers would have to interrogate the
 adapter before using it. That turns a compile-time contract into a runtime
-question and spreads provider awareness back through the application — the exact
+question and spreads provider awareness back through the application: the exact
 thing the port exists to prevent.
 
 **Adopt a multi-provider library that already covers all four.** A sound choice

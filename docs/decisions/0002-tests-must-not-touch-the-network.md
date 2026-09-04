@@ -75,7 +75,7 @@ look.
 **Amended decision.** The commit path stays offline, unchanged. A separate
 contract suite runs against a real provider, marked `contract` and excluded by
 default. It is skipped when no credentials are present, so it never blocks a
-commit, and it names no vendor — the provider is entirely configuration.
+commit, and it names no vendor: the provider is entirely configuration.
 
 Each contract test states in its docstring which of the seven defects it exists
 to prevent. They are not generic checks; they are the memory of what already

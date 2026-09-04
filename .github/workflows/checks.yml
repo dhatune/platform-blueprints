@@ -13,8 +13,8 @@
 # without a real API answering back.
 #
 # So this pipeline is a floor, not a proof. It is here to stop the boring
-# failures — a stray secret, a broken link, an unformatted file, a real
-# hostname copied in from somewhere it should not be — so that review time goes
+# failures: a stray secret, a broken link, an unformatted file, a real
+# hostname copied in from somewhere it should not be, so that review time goes
 # to the things it cannot see.
 
 name: checks
@@ -184,7 +184,7 @@ jobs:
         run: |
           fail=0
 
-          # A lock file belongs to a root module — the directory init and apply
+          # A lock file belongs to a root module: the directory init and apply
           # are run in. Terraform never reads one from a child module, so a lock
           # file under modules/ is a leftover from validating there, and keeping
           # it implies a guarantee nothing enforces.
@@ -234,10 +234,11 @@ jobs:
       - name: Known vulnerabilities in Python dependencies
         run: |
           pip install --quiet pip-audit
-          pip-audit --strict --desc -r <(pip install -q -e patterns/llm-ports 2>/dev/null; pip freeze) || {
-            echo "::warning::pip-audit reported findings; read them before dismissing."
-            exit 1
-          }
+          # Audit the declared dependencies, not the package itself. Auditing a
+          # local project asks the index about something that was never
+          # published, and the run fails on the absence rather than on a
+          # finding.
+          pip-audit --strict --desc --skip-editable patterns/llm-ports
 
       # Terraform's own scanning of the configuration, for the class of mistake
       # that is syntactically fine and operationally wrong: a bucket without
@@ -250,4 +251,9 @@ jobs:
           # Soft-fail: this reports opinions, several of which this repository
           # disagrees with deliberately and documents why. A failing build on a
           # disputed opinion teaches people to bypass the build.
-          ./tfsec landing-zone platform --soft-fail --format lovely
+          # One path per invocation. Passing two is rejected with a usage
+          # message rather than a hint about the argument count.
+          for dir in landing-zone platform; do
+            echo "--- $dir"
+            ./tfsec "$dir" --soft-fail --format lovely
+          done
