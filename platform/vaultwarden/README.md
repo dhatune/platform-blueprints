@@ -42,8 +42,12 @@ backup/     backup.sh takes a consistent backup; verify-restore.sh proves
             the result is usable
 ```
 
-Both enforce the same decisions. What differs is everything underneath, and
-the reason is a single constraint: **Cloud Run has no persistent local disk.**
+**Cloud Run is the one to deploy.** The Kubernetes variant is kept because the
+comparison is this section's actual content: seeing what the same service costs
+on each platform is more useful than either manifest alone.
+
+Both enforce the same decisions. What differs is everything underneath, and the
+reason is a single constraint: **Cloud Run has no persistent local disk.**
 
 | | Kubernetes | Cloud Run |
 |---|---|---|
@@ -69,9 +73,10 @@ generated once out of band so it never passes through Terraform state.
 The same reasoning applies to attachments, which are written to disk and would
 disappear on every instance recycle.
 
-### What each platform makes you say out loud
+### Why Cloud Run wins here
 
-Neither is safer. They make different mistakes easy.
+Neither is safer. They make different mistakes easy, and the choice comes down
+to which mistake you would rather be exposed to.
 
 Kubernetes lets you keep SQLite, which is simpler and genuinely adequate here —
 but it puts the burden on you to prevent a second replica, and the enforcement

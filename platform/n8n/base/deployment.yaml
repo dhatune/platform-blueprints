@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  replicas: 1
+  # Recreate rather than RollingUpdate. Not for the usual reason — the database
+  # is external and would tolerate two pods — but because a workflow that is
+  # mid-execution when its pod is replaced does not resume. Recreate keeps the
+  # interruption to one window instead of overlapping two.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      # Deliberately not on preemptible or spot capacity, and this is the
+      # decision most worth arguing with.
+      #
+      # Everything about this workload says it belongs there: no persistent
+      # volume, all state in Postgres, restarts are safe. That reasoning is
+      # correct about restarts and wrong about executions. A preemption during
+      # a running workflow does not roll it back — the execution is recorded
+      # as crashed, and any side effect it had already performed stays
+      # performed. A workflow that sends invoices sends some of them.
+      #
+      # Restarting safely and being interruptible safely are different
+      # properties, and only the first one follows from having no local state.
+      nodeSelector:
+        node-role: stateful
+      tolerations:
+        - key: workload
+          operator: Equal
+          value: stateful
+          effect: NoSchedule
+      # n8n exits rather than retrying when the database refuses a connection,
+      # so on a cold start of the whole namespace it crashes and is restarted
+      # until Postgres is accepting. Kubernetes recovers on its own and the
+      # end state is correct, which is why this is easy to leave alone.
+      #
+      # It is worth fixing because of what it does to monitoring. The restarts
+      # are recorded with reason Error and a non-zero exit code, which is
+      # indistinguishable from a real crash: any alert on restart count fires
+      # on every deployment, and an alert that always fires is one nobody
+      # reads. Waiting here turns a crash loop into an init phase.
+      initContainers:
+        - name: wait-for-db
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres.n8n.svc.cluster.local -U n8n; do
+                echo "waiting for database"
+                sleep 2
+              done
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+      containers:
+        - name: n8n
+          # Pin by digest before deploying; resolve it from the registry rather
+          # than copying one from a document.
+          image: docker.n8n.io/n8nio/n8n:1.64.3
+          ports:
+            - name: http
+              containerPort: 5678
+          env:
+            - name: DB_TYPE
+              value: postgresdb
+            - name: DB_POSTGRESDB_HOST
+              value: postgres.n8n.svc.cluster.local
+            - name: DB_POSTGRESDB_PORT
+              value: "5432"
+            - name: DB_POSTGRESDB_DATABASE
+              value: n8n
+            - name: DB_POSTGRESDB_USER
+              value: n8n
+            - name: DB_POSTGRESDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: n8n
+                  key: db-password
+            # This key encrypts every credential stored in every workflow. It
+            # is not a session secret and it cannot be rotated by generating a
+            # new one: lose it and the stored credentials are unrecoverable,
+            # change it and they all fail to decrypt at once. It belongs in a
+            # secret manager and in the backup, and the backup of the database
+            # alone is not sufficient to restore the system.
+            - name: N8N_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: n8n
+                  key: encryption-key
+            - name: N8N_PORT
+              value: "5678"
+            - name: N8N_DIAGNOSTICS_ENABLED
+              value: "false"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 768Mi
+            limits:
+              # 1Gi is not enough, and the way it fails is misleading. A
+              # workflow that assembles images holds them in memory inside the
+              # execution, so the pod is killed part-way through a run. The
+              # execution is marked crashed and the logs show no error, because
+              # the process did not fail — it was removed.
+              memory: 2Gi
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            failureThreshold: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 15
+            failureThreshold: 3

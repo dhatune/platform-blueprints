@@ -94,6 +94,32 @@ not verified               neither variant has been deployed to a cluster
 
 → [Read it](platform/vaultwarden/)
 
+### `platform/n8n` — available now
+
+Workflow automation on Kubernetes: all state in Postgres, three entrances with
+three different locks, and an encryption key whose loss costs every stored
+credential even with a perfect database backup.
+
+The section exists for one argument. Everything about this workload says it
+belongs on the cheapest interruptible capacity available — no volume, no local
+state, restarts are free. That is right about restarts and wrong about
+executions: an eviction mid-run does not roll anything back, it leaves the work
+half done and records it as crashed.
+
+```
+deployed to a disposable cluster    all pods ready, 0 restarts
+health probe                        200 on all three services
+schema                              30 tables created
+credentials at rest                 ciphertext; the plaintext appears nowhere
+```
+
+Deploying it found a defect that `--dry-run` reports as valid: the service exits
+instead of retrying when the database is not up yet, so it crash-looped twice
+before settling. Harmless, and it makes every restart alarm fire on every
+deploy. An init container fixes it.
+
+→ [Read it](platform/n8n/)
+
 ### Planned
 
 | Section | What it will cover |
@@ -101,7 +127,6 @@ not verified               neither variant has been deployed to a cluster
 | `platform/erpnext/` | ERPNext deployment with managed secrets, least-privilege service account, private networking and verified backups |
 | `platform/chatwoot/` | Customer conversation platform, same security baseline |
 | `platform/docuseal/` | Electronic signature, same security baseline |
-| `platform/n8n/` | Workflow automation with credentials outside the workflow definitions |
 
 Sections are published when they are finished, not when they are started.
 
@@ -134,6 +159,8 @@ short, dated, and state what was rejected as well as what was chosen.
 5. [No service account keys](docs/decisions/0005-no-service-account-keys.md)
 6. [The password manager's admin panel is disabled, not protected](docs/decisions/0006-no-admin-panel.md)
 7. [Backups are verified by restoring them, on a schedule](docs/decisions/0007-backups-verified-by-restoring-them.md)
+8. [Stateless is not the same as interruptible](docs/decisions/0008-stateless-is-not-interruptible.md)
+9. [One workload, several entrances with different locks](docs/decisions/0009-one-workload-several-doors.md)
 
 ---
 

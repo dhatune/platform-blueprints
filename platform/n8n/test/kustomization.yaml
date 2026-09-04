@@ -1,0 +1,27 @@
+# Overlay used to exercise the base in a throwaway local cluster.
+#
+# It removes the node placement, which names pools that only exist in a real
+# cluster, and supplies a disposable secret. Everything else is the base
+# unchanged, so what is tested is the actual manifest rather than a simplified
+# copy of it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: n8n
+resources:
+  - ../base
+patches:
+  - target:
+      kind: Deployment
+      name: n8n
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/nodeSelector
+      - op: remove
+        path: /spec/template/spec/tolerations
+secretGenerator:
+  - name: n8n
+    literals:
+      - db-password=throwaway-for-local-testing
+      - encryption-key=0000000000000000000000000000000000000000000000000000000000000000
+generatorOptions:
+  disableNameSuffixHash: true

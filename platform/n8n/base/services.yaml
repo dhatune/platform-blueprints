@@ -1,0 +1,55 @@
+# Three Services, one set of pods.
+#
+# This looks like duplication and is not. The workload has three kinds of
+# caller, and they cannot share an authentication posture:
+#
+#   n8n          the editor, used by people. Sits behind whatever single
+#                sign-on the platform provides.
+#   n8n-webhook  called by external systems that have no identity in that SSO.
+#                It cannot sit behind it, so each workflow validates its own
+#                token as its first step.
+#   n8n-api      called by internal automation, guarded by a bearer token.
+#
+# Splitting them at the Service is what allows the proxy or gateway in front to
+# attach a different policy to each, without the pods knowing anything about it.
+# One Service with three paths would force one policy on all three.
+#
+# The consequence worth stating plainly: the webhook entrance is a door with no
+# lock in front of it. What protects it is the token check inside each workflow,
+# which means a workflow authored without that check is publicly callable. That
+# is a review rule, not a platform control, and review rules are weaker.
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  selector:
+    app: n8n
+  ports:
+    - port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-webhook
+  namespace: n8n
+spec:
+  selector:
+    app: n8n
+  ports:
+    - port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-api
+  namespace: n8n
+spec:
+  selector:
+    app: n8n
+  ports:
+    - port: 80
+      targetPort: http
