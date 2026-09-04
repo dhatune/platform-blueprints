@@ -13,13 +13,13 @@
 resource "google_folder" "root" {
   display_name        = var.root_folder_name
   parent              = "organizations/${var.organization_id}"
-  deletion_protection = true
+  deletion_protection = var.deletion_protection
 }
 
 resource "google_folder" "shared" {
   display_name        = "shared"
   parent              = google_folder.root.name
-  deletion_protection = true
+  deletion_protection = var.deletion_protection
 }
 
 resource "google_folder" "product" {
@@ -27,5 +27,5 @@ resource "google_folder" "product" {
 
   display_name        = each.value
   parent              = google_folder.root.name
-  deletion_protection = true
+  deletion_protection = var.deletion_protection
 }

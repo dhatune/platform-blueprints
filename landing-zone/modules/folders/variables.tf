@@ -29,3 +29,15 @@ variable "product_folders" {
     error_message = "Declare at least one product folder."
   }
 }
+
+variable "deletion_protection" {
+  description = <<-EOT
+    Whether folders refuse to be destroyed. True everywhere that matters.
+
+    It is a variable rather than a constant because a blueprint that cannot be
+    torn down cannot be tried, and something nobody can try gets adopted
+    without being understood.
+  EOT
+  type        = bool
+  default     = true
+}

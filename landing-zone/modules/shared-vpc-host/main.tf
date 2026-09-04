@@ -9,6 +9,16 @@
 # routed path between production and development that only firewall rules
 # prevent. A rule can be edited by mistake; a missing route cannot.
 
+# Enabling a project as a Shared VPC host requires compute.organizations.enableXpnHost,
+# which is granted by roles/compute.xpnAdmin at the organisation. Neither owner
+# nor organizationAdmin includes it, so the apply fails here with a 403 that
+# names the permission but not the role, and not the fact that it has to be
+# granted above the folder this stack lives in.
+#
+# The DNS zones below need dns.googleapis.com enabled on this project. That is
+# the caller's responsibility through activate_apis, and enabling an API takes
+# a couple of minutes to propagate: an apply that enables it and uses it in the
+# same run fails once and succeeds on retry.
 resource "google_compute_shared_vpc_host_project" "this" {
   project = var.project_id
 }

@@ -17,7 +17,7 @@ resource "google_project" "this" {
 
   # Terraform should not be able to delete a project holding real data by
   # inference from a plan.
-  deletion_policy = "PREVENT"
+  deletion_policy = var.deletion_policy
 
   # Without this, an inherited default network appears with permissive rules.
   auto_create_network = false
@@ -48,19 +48,36 @@ resource "google_compute_shared_vpc_service_project" "this" {
 }
 
 # Subnet-level access, not project-level.
+#
+# The keys are positional rather than descriptive, and that is deliberate.
+#
+# The obvious key is the subnet id paired with the member, which reads far
+# better in plan output. It also cannot work: both values are usually produced
+# by other resources in the same run, so neither is known when Terraform builds
+# the plan, and for_each refuses a map whose keys it cannot determine yet. The
+# error names for_each and unknown values without saying that the cause is the
+# key expression, which sends most people looking in the wrong place.
+#
+# Positions are known from the configuration itself, so the map is complete at
+# plan time. The cost is that reordering the list moves bindings between keys,
+# which Terraform sees as destroying one and creating another. For a list of
+# grants that is written once and rarely reordered, that trade is worth taking;
+# a caller that reorders often should key on a name it supplies instead.
+locals {
+  subnet_grant_bindings = merge([
+    for subnet_index, subnet in var.subnet_grants : {
+      for member_index, member in subnet.members :
+      "${subnet_index}-${member_index}" => {
+        subnet_id = subnet.subnet_id
+        region    = subnet.region
+        member    = member
+      }
+    }
+  ]...)
+}
+
 resource "google_compute_subnetwork_iam_member" "network_user" {
-  for_each = {
-    for grant in flatten([
-      for subnet in var.subnet_grants : [
-        for member in subnet.members : {
-          key       = "${subnet.subnet_id}/${member}"
-          subnet_id = subnet.subnet_id
-          region    = subnet.region
-          member    = member
-        }
-      ]
-    ]) : grant.key => grant
-  }
+  for_each = local.subnet_grant_bindings
 
   project    = var.shared_vpc_host_project
   region     = each.value.region

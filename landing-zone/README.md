@@ -143,3 +143,37 @@ Constraints are applied before access is granted. A grant made while they were
 absent was never checked against them, and applying them afterwards does not
 revoke it.
 
+## Applied and destroyed
+
+This was applied to a real organisation, into an isolated folder, and then torn
+down. Thirty resources planned, twenty-three created before the run stopped,
+everything removed afterwards.
+
+The exercise is recorded because of what it found. All of it passed
+`terraform fmt` and `terraform validate` beforehand, which is exactly the
+point: neither of those runs a plan against a real API.
+
+**A key built from values that do not exist yet.** The subnet grants were keyed
+by subnet id and member, both produced by other resources in the same run, so
+Terraform could not determine the map before applying. The module could not be
+applied from scratch at all. Keys are positional now, with the trade-off
+written next to them.
+
+**Two modules that refused to be destroyed.** Folders and projects both carried
+their protection as a constant rather than a variable. A blueprint that cannot
+be torn down cannot be tried, and something nobody can try gets adopted without
+being understood. Both are variables now, still protective by default.
+
+**An undeclared API.** The network module creates private DNS zones without
+declaring that the API has to be enabled on the project it is given. Enabling
+an API also takes minutes to propagate, so the first apply after enabling one
+fails and the retry succeeds.
+
+**A permission that lives above the stack.** Enabling a Shared VPC host needs a
+role granted at the organisation, which neither owner nor organization admin
+includes. The failure names the permission and not the role.
+
+Shared VPC attachment itself is therefore still unverified: the run stopped at
+that permission rather than granting a new organisation-level role to finish a
+throwaway test.
+

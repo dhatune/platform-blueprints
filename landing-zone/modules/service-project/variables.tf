@@ -63,3 +63,20 @@ variable "activate_apis" {
   type        = list(string)
   default     = []
 }
+
+variable "deletion_policy" {
+  description = <<-EOT
+    Whether the project refuses to be destroyed. PREVENT everywhere real.
+
+    It is a variable for the same reason folders have one: a blueprint that
+    cannot be torn down cannot be tried, and something nobody can try gets
+    adopted without being understood. Found by trying to tear this one down.
+  EOT
+  type        = string
+  default     = "PREVENT"
+
+  validation {
+    condition     = contains(["PREVENT", "ABANDON", "DELETE"], var.deletion_policy)
+    error_message = "Must be PREVENT, ABANDON or DELETE."
+  }
+}
