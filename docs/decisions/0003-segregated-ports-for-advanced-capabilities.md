@@ -48,7 +48,7 @@ ToolUsePort            converse()        tool declaration and result feedback
 StreamingPort          stream()          incremental output
 ```
 
-An application that summarises documents depends on the first alone and pays
+An application that summarizes documents depends on the first alone and pays
 nothing for the other three. An application that needs tools depends on the
 third and accepts, explicitly, that substitutable providers are fewer there and
 the leak is wider.

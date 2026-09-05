@@ -24,7 +24,7 @@ when a node replaces itself rather than when the deletion happened.
 
 ## Decision
 
-Workload images are pulled from a registry inside the same organisation. Two
+Workload images are pulled from a registry inside the same organization. Two
 mechanisms, and the difference is worth understanding rather than picking by
 which involves less typing.
 
@@ -56,7 +56,7 @@ mechanism rather than a retention guarantee; it holds what was recently asked
 for, which is not the same as holding what production depends on.
 
 **Building every image from source.** Total control and total cost. Reasonable
-for an organisation with the people to maintain it, and a poor trade for one
+for an organization with the people to maintain it, and a poor trade for one
 that would end up maintaining stale forks of things it does not understand.
 
 ## Consequences

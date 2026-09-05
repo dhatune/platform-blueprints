@@ -25,7 +25,7 @@ keys, ADR 10 on groups, ADR 11 on constraints and ADR 23 on building this
 first.
 
 
-The organisation layout a platform sits on: folder hierarchy, a Shared VPC host
+The organization layout a platform sits on: folder hierarchy, a Shared VPC host
 with physically isolated environments, and one project per product per
 environment.
 
@@ -42,7 +42,7 @@ A landing zone answers those three by construction rather than by audit.
 ## The shape
 
 ```
-organisation
+organization
 └── platform
     ├── shared          networking, CI/CD, observability
     └── <product>       one folder per product
@@ -61,7 +61,7 @@ host project
 ## The decisions and what they cost
 
 **A folder per product.** An operator is granted a role on one folder instead of
-on the organisation, and a mistake stops at the folder boundary. The cost is
+on the organization, and a mistake stops at the folder boundary. The cost is
 more folders to manage and more bindings to keep track of.
 
 **Separate networks, not subnets of one.** The common approach is one VPC split
@@ -94,7 +94,7 @@ terraform init
 terraform plan
 ```
 
-Every value in the example is fictional. A real organisation or billing
+Every value in the example is fictional. A real organization or billing
 identifier in a public repository is free reconnaissance.
 
 ## Two failures worth knowing about
@@ -119,7 +119,7 @@ cd example && terraform init -backend=false && terraform validate
 
 ## What is deliberately not here
 
-No organisation policies, no logging sink to a central bucket, no budget alerts,
+No organization policies, no logging sink to a central bucket, no budget alerts,
 no Cloud NAT, and no CI/CD wiring. All of them belong in a real platform. They
 are omitted so the hierarchy and the isolation decision stay legible, which is
 what this section is for.
@@ -140,14 +140,14 @@ attempt to give the applying identity a role that could change IAM policy ,
 because an identity that can widen its own access makes the approval gate in
 front of it decorative.
 
-`guardrails` applies organisation policy constraints, which are the other kind
+`guardrails` applies organization policy constraints, which are the other kind
 of control entirely. A role is a grant, and anyone who can grant roles can grant
 a different one. A constraint is a limit that a project owner cannot remove. The
 distinction is the difference between a decision that is written down and a
 decision that holds at three in the morning when the deployment has to go out.
 
 The constraints deny service account key creation, restrict IAM policies to the
-organisation's own identities, and refuse external addresses on machines, public
+organization's own identities, and refuse external addresses on machines, public
 database addresses and public buckets.
 
 Two details worth knowing before applying them:
@@ -160,7 +160,7 @@ shape at plan time.
 The constraint on automatic grants to default service accounts is correct and
 will break the build process of some managed runtimes, with an error that never
 mentions policy. The exception belongs at the folder holding those workloads
-rather than at the organisation, so the rest of the estate keeps the protection.
+rather than at the organization, so the rest of the estate keeps the protection.
 That exception is configuration with a reason attached, not a change somebody
 once made in a console.
 
@@ -170,7 +170,7 @@ revoke it.
 
 ## Applied and destroyed, twice
 
-Applied to a real organisation into an isolated folder and torn down, twice.
+Applied to a real organization into an isolated folder and torn down, twice.
 The first run stopped part-way; the second carried a cluster and a workload.
 
 All of it passed `terraform fmt` and `terraform validate` beforehand, both
@@ -195,7 +195,7 @@ propagate, so a run that enables one and uses it immediately fails and the
 retry succeeds.
 
 **A permission living above the stack.** Enabling a Shared VPC host needs a
-role granted at the organisation, which neither `roles/owner` nor
+role granted at the organization, which neither `roles/owner` nor
 `roles/resourcemanager.organizationAdmin` includes.
 
 ### What the second run found, and proved
@@ -221,7 +221,7 @@ host of the service project   the host project, confirmed by the API
 cluster                       RUNNING, using the host's network and subnet
 secondary ranges              in use; without them it cannot be created
 workload                      three services answering, schema created
-image                         from the organisation's own registry, by digest
+image                         from the organization's own registry, by digest
 ```
 
 **And the teardown failed once**, which is the same shape as the API race and

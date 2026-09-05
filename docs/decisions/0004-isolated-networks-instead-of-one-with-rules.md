@@ -31,7 +31,7 @@ environment cannot resolve to an address in the other.
 ## The reasons beyond the technical one
 
 The argument above is about what a rule cannot guarantee. There are three more,
-and in a real organisation they usually carry the decision.
+and in a real organization they usually carry the decision.
 
 **Governance.** Separate networks give each environment an owner and a boundary
 that can be pointed at. With one network and a set of rules, the boundary is an

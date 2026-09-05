@@ -17,7 +17,7 @@ from ..errors import TransientError
 from ..ports import LanguageModelPort
 
 _INSTRUCTION = (
-    "Summarise the document below. Keep it under {limit} words. "
+    "Summarize the document below. Keep it under {limit} words. "
     "Use only information present in the document."
 )
 
@@ -49,7 +49,7 @@ class Summary:
 
 
 class SummarizeDocument:
-    """Summarise a document, retrying only what is worth retrying.
+    """Summarize a document, retrying only what is worth retrying.
 
     Retries apply to `TransientError` alone. A permanent failure is raised
     immediately, because repeating a malformed request just burns budget.

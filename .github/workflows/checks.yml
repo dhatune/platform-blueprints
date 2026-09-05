@@ -6,7 +6,7 @@
 # infrastructure works.
 #
 # That distinction is not academic. Applying this repository's landing zone to
-# a real organisation found four defects that every check below passes: a
+# a real organization found four defects that every check below passes: a
 # resource key built from values that do not exist until apply, two modules
 # that refused to be destroyed, an API used without being declared, and a
 # permission that has to be granted above the stack. None of them are visible

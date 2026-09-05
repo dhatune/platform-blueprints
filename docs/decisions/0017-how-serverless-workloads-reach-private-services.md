@@ -21,11 +21,11 @@ that can be unhealthy independently of both sides.
 A newer approach attaches the workload to the network directly, with no
 instances in between. Less to pay for, less to size, less to fail, and it is
 the right default for the common case, which is a workload reaching a database
-in a network the same organisation controls.
+in a network the same organization controls.
 
 A third approach is a private endpoint for a service, which is a different
 problem rather than a cheaper solution to the same one. It exposes or consumes
-a *service* privately, including across organisations, and gives the consumer
+a *service* privately, including across organizations, and gives the consumer
 an address inside their own network. It is what to reach for when the far side
 is not yours, or when what is being connected is a published service rather
 than a subnet.
@@ -35,12 +35,12 @@ substitutes.
 
 ## Decision
 
-A workload reaching a private address in a network this organisation controls
+A workload reaching a private address in a network this organization controls
 attaches to that network directly. No bridge instances are provisioned for
 that case.
 
 A private endpoint is used when the far side is a published service rather than
-a network: a managed offering, another organisation's service, or something
+a network: a managed offering, another organization's service, or something
 this side should not be able to reach beyond the one endpoint.
 
 The instance-based bridge is used only where the platform still requires it,

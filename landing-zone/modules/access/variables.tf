@@ -1,5 +1,5 @@
 variable "organization_id" {
-  description = "Numeric organisation id."
+  description = "Numeric organization id."
   type        = string
 }
 
@@ -66,7 +66,7 @@ variable "applier_roles" {
 
 variable "break_glass_group" {
   description = <<-EOT
-    Group granted owner at the organisation for emergency recovery. Expected to
+    Group granted owner at the organization for emergency recovery. Expected to
     hold no standing member; adding one should raise an alert. Null disables it.
   EOT
   type        = string

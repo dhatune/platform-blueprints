@@ -19,7 +19,7 @@ The usual mitigations are to make the token long, to move the panel to an
 unguessable path, and to put an IP allowlist in front of it. Each of these
 raises the cost of an attack without changing what a successful one yields:
 administrative control of the service holding every credential the
-organisation owns.
+organization owns.
 
 ## Decision
 
@@ -28,7 +28,7 @@ is present, so leaving it unset disables the interface rather than merely
 guarding it.
 
 The operations the panel performs are done another way. User invitations go
-through the normal invitation flow, which is available to organisation
+through the normal invitation flow, which is available to organization
 administrators through the ordinary authenticated interface. The rarer
 operations, deleting a user, inspecting diagnostics, are performed by
 executing a command against the running container, which requires cluster
@@ -65,7 +65,7 @@ Recovering from certain misconfigurations is harder. Settings normally changed
 through the panel are set as environment variables and require a redeployment,
 which is slower than editing a form.
 
-This decision suits an organisation small enough that administrative operations
+This decision suits an organization small enough that administrative operations
 are rare. A larger deployment, where user administration happens weekly, should
 revisit it and put an authenticating proxy in front of the panel rather than
 live with the friction, or worse, quietly re-enable the token.

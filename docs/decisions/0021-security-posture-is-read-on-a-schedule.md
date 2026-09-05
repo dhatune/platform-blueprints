@@ -25,7 +25,7 @@ possibly did not mean to.
 
 ## Decision
 
-The posture service is enabled across the whole organisation, not per project,
+The posture service is enabled across the whole organization, not per project,
 because the thing worth catching is a project nobody is watching.
 
 Its findings are reviewed on a fixed schedule, and the review is a named

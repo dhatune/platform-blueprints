@@ -10,7 +10,7 @@
 # prevent. A rule can be edited by mistake; a missing route cannot.
 
 # Enabling a project as a Shared VPC host requires compute.organizations.enableXpnHost,
-# which is granted by roles/compute.xpnAdmin at the organisation. Neither owner
+# which is granted by roles/compute.xpnAdmin at the organization. Neither owner
 # nor organizationAdmin includes it, so the apply fails here with a 403 that
 # names the permission but not the role, and not the fact that it has to be
 # granted above the folder this stack lives in.

@@ -19,7 +19,7 @@ Audit logs are not one thing. The record of who changed a configuration is
 retained for a long period at no charge and cannot be turned off, which is
 correct: it is the account of what happened to the estate. The record of who
 read which row is a separate category, is off by default, and is enormous.
-Enabling it across an organisation because it sounds prudent can cost more than
+Enabling it across an organization because it sounds prudent can cost more than
 the workloads it observes.
 
 Defaults are generous. A managed platform will happily accept every log its

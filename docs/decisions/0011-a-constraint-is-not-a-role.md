@@ -26,7 +26,7 @@ is allowed.
 
 Decisions that must survive their own inconvenience are expressed as
 constraints, not as conventions or roles. In particular: no service account
-keys, no identities from outside the organisation in any policy, no external
+keys, no identities from outside the organization in any policy, no external
 addresses on machines, no public database addresses, no public buckets.
 
 Constraints are applied before access is granted. A grant made while the

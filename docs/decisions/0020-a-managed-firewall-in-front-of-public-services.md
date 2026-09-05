@@ -68,5 +68,5 @@ rather than an alert. Someone has to own the exceptions, and exceptions
 accumulate: each one is a hole with a reason that outlives the reason.
 
 And the log of what was blocked is only worth having if it is read. Turning this
-on and never looking produces defence without information, which is half of what
+on and never looking produces defense without information, which is half of what
 was paid for.

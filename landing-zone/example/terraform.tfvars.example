@@ -1,7 +1,7 @@
 # Copy to terraform.tfvars and replace with your own values.
 # terraform.tfvars is excluded from version control; this file is not.
 #
-# Every value below is fictional. A real organisation or billing identifier in
+# Every value below is fictional. A real organization or billing identifier in
 # a public repository is free reconnaissance for an attacker.
 
 organization_id = "000000000000"

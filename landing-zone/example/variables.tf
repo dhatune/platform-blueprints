@@ -1,5 +1,5 @@
 variable "organization_id" {
-  description = "Numeric organisation ID."
+  description = "Numeric organization ID."
   type        = string
 }
 

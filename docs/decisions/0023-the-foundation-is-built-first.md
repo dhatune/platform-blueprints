@@ -5,7 +5,7 @@
 
 ## Context
 
-The layout of an organisation, its folders, its projects, its networks, who may
+The layout of an organization, its folders, its projects, its networks, who may
 do what and what is forbidden outright, is almost always the last thing anyone
 thinks about. Not because it is considered and postponed, but because it is not
 considered at all. Work starts with the thing that has to ship, an account is
@@ -20,7 +20,7 @@ It was just never designed.
 Three consequences follow, and they arrive together.
 
 **It does not match how the company works.** Approvals, ownership and the way
-changes are reviewed exist in the organisation already. An estate that grew
+changes are reviewed exist in the organization already. An estate that grew
 outward has its own arrangement, invented per project, and the two do not meet.
 
 **It does not match the security policy.** The policy says what must be true.
@@ -64,7 +64,7 @@ this decision is usually skipped.
 
 Some of it will be wrong. Designing a foundation before the first workload means
 guessing about workloads that do not exist, and some guesses will be corrected
-later at exactly the cost this decision was trying to avoid. The defence is to
+later at exactly the cost this decision was trying to avoid. The defense is to
 decide only what is expensive to change afterwards, which is the hierarchy, the
 separation and the constraints, and leave everything else open.
 

@@ -54,7 +54,7 @@ dbPort: 3306
 # because losing it costs a restart rather than data.
 # The chart moved off Redis to a fork of it, so these keys are named for the
 # component the chart actually deploys. This is worth checking rather than
-# copying: values a chart no longer recognises are ignored in silence, so the
+# copying: values a chart no longer recognizes are ignored in silence, so the
 # file reads as configuration and is decoration. Nothing warns you.
 #
 # Pin the chart version for the same reason. Without a pin, an upgrade can

@@ -40,7 +40,7 @@ passwords at all, per ADR 5.
 foothold is usually not privileged, and because coverage becomes unknowable.
 
 **A single sign-on provider with no second factor**, on the argument that
-centralising is the win. Rejected because it centralises the target: one
+centralising is the win. Rejected because it centralizes the target: one
 password now opens everything rather than one thing.
 
 **Codes sent as text messages.** Better than nothing and widely accepted.

@@ -26,14 +26,14 @@ So every section here carries the same three things:
 ## How the pieces fit
 
 An editable version is in [`docs/diagrams/`](docs/diagrams/). Every element
-below was applied to a real organisation and then destroyed.
+below was applied to a real organization and then destroyed.
 
 ```mermaid
 flowchart TB
     net([Internet]) --> armor[Cloud Armor<br/>managed rules, rate limit<br/>preview before enforcing]
     armor --> lb[Global load balancer<br/>built from a Gateway<br/>TLS terminated here]
 
-    subgraph org [Organisation]
+    subgraph org [Organization]
         subgraph shared [Folder: shared]
             subgraph host [Host project]
                 prod[VPC prod<br/>+ pod and service ranges]
@@ -94,7 +94,7 @@ down rather than quietly fixed.
 
 ### `landing-zone`
 
-The organisation layout a platform sits on: folder hierarchy, a Shared VPC host
+The organization layout a platform sits on: folder hierarchy, a Shared VPC host
 with two physically isolated networks, and one project per product per
 environment.
 
@@ -114,7 +114,7 @@ terraform validate            valid
 provider lock                 linux_amd64, darwin_arm64, darwin_amd64
 refused at plan time          primitive roles, an applier that can change IAM,
                               a domain name where a customer ID belongs
-applied and destroyed         twice, against a real organisation; the second
+applied and destroyed         twice, against a real organization; the second
                               run carried a cluster on the shared network and
                               a workload pulling from the org's own registry
 ```
@@ -208,8 +208,8 @@ the same port.
 
 **`landing-zone`**: five Terraform modules, hierarchy, two isolated networks,
 a project per environment, group-based access, and policy constraints. Enough
-to stand up the shell of an organisation. It has been applied once to a real
-organisation and destroyed, and Shared VPC attachment specifically was never
+to stand up the shell of an organization. It has been applied once to a real
+organization and destroyed, and Shared VPC attachment specifically was never
 reached. There is no compute, no pipeline, no logging destination, no registry
 and no outbound gateway. It is a floor plan, not a building.
 
@@ -233,7 +233,7 @@ it costs. This is the part with the longest useful life. The code will age.
 **`.github/workflows`**: checks that run without credentials, which is exactly
 their limit. They catch a stray secret, a broken link, a real hostname, an
 unformatted file. They pass every defect that applying this to a real
-organisation found.
+organization found.
 
 ### The honest summary
 
@@ -247,7 +247,7 @@ costs are written, and every one of them costs something.
 Each of these is checked on every push. A rule nobody checks is a preference.
 
 **Nothing here is copied from a live environment.** No project identifiers, no
-organisation or billing identifiers, no domains, no client names. Every example
+organization or billing identifiers, no domains, no client names. Every example
 value is fictional and every credential is a placeholder.
 
 **Secrets never reach the repository.** `.gitignore` was the first commit, the

@@ -59,7 +59,7 @@ This is the kind of thing that only appears when the manifest is actually run.
 
 ## A gap this section has
 
-The workload's image can come from a registry inside the organisation, and in
+The workload's image can come from a registry inside the organization, and in
 the verified run it did, mirrored and pinned by digest, exactly as ADR 12
 argues. The database image beside it still names a public registry.
 

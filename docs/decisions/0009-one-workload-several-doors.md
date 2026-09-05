@@ -8,7 +8,7 @@
 The automation service has three kinds of caller and they cannot share an
 authentication posture.
 
-People use the editor, and it should sit behind the organisation's single
+People use the editor, and it should sit behind the organization's single
 sign-on like every other internal tool. External systems call webhooks, and
 they have no identity in that sign-on, putting the webhook behind it means the
 webhook stops working. Internal automation calls an API, which wants a token

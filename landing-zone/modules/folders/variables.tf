@@ -1,5 +1,5 @@
 variable "organization_id" {
-  description = "Numeric organisation ID that owns the hierarchy."
+  description = "Numeric organization ID that owns the hierarchy."
   type        = string
 
   validation {
@@ -19,7 +19,7 @@ variable "product_folders" {
     Display names of the per-product folders, one per product.
 
     A folder per product is what makes least privilege affordable: an operator
-    is granted a role on one folder rather than on the organisation, and the
+    is granted a role on one folder rather than on the organization, and the
     blast radius of a mistake stops at the folder boundary.
   EOT
   type        = list(string)

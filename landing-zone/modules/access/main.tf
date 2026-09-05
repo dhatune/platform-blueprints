@@ -5,12 +5,12 @@
 # First: bindings are made to groups, never to individuals. This is not
 # tidiness. Access has to end when a person leaves, and that has to happen in
 # one place, the directory, rather than by searching every folder and project
-# in the organisation for their address. A binding to a person is a promise
+# in the organization for their address. A binding to a person is a promise
 # that somebody will remember to remove it, and that promise is kept for about
 # as long as the person is remembered.
 #
 # Second: a role is granted at the level it is needed and no higher. Granting
-# at the organisation to make one project work is the most common way least
+# at the organization to make one project work is the most common way least
 # privilege dies, and it dies quietly, because the thing that was broken now
 # works.
 
@@ -54,7 +54,7 @@ resource "google_folder_iam_member" "applier" {
   member = "serviceAccount:${var.applier_service_account}"
 }
 
-# Break-glass access exists because the alternative is worse: an organisation
+# Break-glass access exists because the alternative is worse: an organization
 # with no path to recovery invents one under pressure, and the improvised
 # version is never removed.
 #

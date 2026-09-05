@@ -72,7 +72,7 @@ told why there is not one, and the first-time configuration of federation is
 genuinely more work than generating a key. That cost is paid once per platform,
 against a risk that is paid continuously.
 
-An organisation policy that disables key creation is the enforcement mechanism
+An organization policy that disables key creation is the enforcement mechanism
 for this decision. It is not included in this repository, which keeps to the
 hierarchy and network layout, but it is the difference between a documented
 intention and a guarantee.

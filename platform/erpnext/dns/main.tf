@@ -5,7 +5,7 @@
 # It also hands write access to the zone holding the domain's mail records, its
 # website, and everything else, to a controller that reconciles state in a loop.
 #
-# That controller has a mode which deletes records it does not recognise. It is
+# That controller has a mode which deletes records it does not recognize. It is
 # not the default, and it is a single flag away, and the flag is set by someone
 # trying to make deleted services stop resolving. A wrong filter alongside it
 # removes the mail records of a company that was not deploying anything at the

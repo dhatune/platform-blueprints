@@ -26,7 +26,7 @@ and nowhere else.
 
 The infrastructure defines which groups hold which roles. Who is in a group is
 a separate question with a separate answer, managed where joining and leaving
-the organisation is already handled.
+the organization is already handled.
 
 Primitive roles are refused at plan time. They are convenient precisely because
 they are broad, and an estate that admits them at folder level has no least
@@ -34,7 +34,7 @@ privilege regardless of what the rest of its configuration says.
 
 ## Alternatives considered
 
-**Direct bindings with a periodic audit.** This is what most organisations
+**Direct bindings with a periodic audit.** This is what most organizations
 actually do. It works to the extent the audit runs and someone acts on it, and
 it fails in the gap between a person leaving and the next audit, which is
 exactly the window that matters.

@@ -136,7 +136,7 @@ Streaming is the hard one, and not for the obvious reason: `generate() -> Respon
 becomes an iterator, and that propagates into every caller.
 
 The answer is not one widening interface. It is segregated ports, so an
-application that only summarises pays for nothing else. And when a product truly
+application that only summarizes pays for nothing else. And when a product truly
 depends on one provider's deep tool semantics, the honest move is to declare the
 lock-in rather than hide it behind an abstraction that leaks.
 

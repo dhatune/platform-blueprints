@@ -1,6 +1,6 @@
 # Folder hierarchy.
 #
-#   organisation
+#   organization
 #   └── root
 #       ├── shared      networking, CI/CD, observability
 #       └── <product>   one per product, each with its own environments

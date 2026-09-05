@@ -1,4 +1,4 @@
-# Organisation policy constraints.
+# Organization policy constraints.
 #
 # Everything else in this landing zone is a grant: someone is given a role, and
 # anyone who can grant roles can grant a different one. A constraint is the
@@ -26,7 +26,7 @@ resource "google_org_policy_policy" "no_service_account_keys" {
   }
 }
 
-# Restricts who can appear in any IAM policy to the organisation's own
+# Restricts who can appear in any IAM policy to the organization's own
 # identities. Without it, a single mistyped or careless binding can grant a
 # personal account outside the company access to a production project, and
 # nothing about that binding looks unusual in a diff.
@@ -106,7 +106,7 @@ resource "google_org_policy_policy" "require_os_login" {
 # process for some managed runtimes relies on exactly those automatic grants,
 # and enabling this breaks them with an error that does not mention policy at
 # all. The exception belongs at the folder holding those workloads, not at the
-# organisation, so the rest of the estate keeps the protection. That is what
+# organization, so the rest of the estate keeps the protection. That is what
 # exempt_folders is for.
 resource "google_org_policy_policy" "no_automatic_grants" {
   name   = "${var.parent}/policies/iam.automaticIamGrantsForDefaultServiceAccounts"

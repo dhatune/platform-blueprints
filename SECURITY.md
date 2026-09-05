@@ -36,7 +36,7 @@ validation for the infrastructure code, schema validation for the Kubernetes
 manifests, and shell linting.
 
 **None of that talks to a cloud API.** Applying this repository's landing zone
-to a real organisation found defects that every one of those checks passes: a
+to a real organization found defects that every one of those checks passes: a
 resource key built from values that do not exist at plan time, modules that
 refused to be destroyed, an undeclared API dependency, a permission that has to
 be granted above the stack, and a firewall that blocked the platform's own

@@ -40,7 +40,7 @@ never compared to reality documents an intention.
 
 ## Alternatives considered
 
-**Per-system ownership with periodic review.** How most organisations work. It
+**Per-system ownership with periodic review.** How most organizations work. It
 functions while each system has an attentive owner and fails at the seams ,
 which is where the compounding risk lives, since no single owner sees a
 combination.

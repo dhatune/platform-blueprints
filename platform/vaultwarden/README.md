@@ -7,7 +7,7 @@ deployed.
 
 Every other service in `platform/` can be rebuilt from backup if it breaks. This
 one holds the credentials to everything else. A mistake here is not an outage,
-it is a breach of every system the organisation owns.
+it is a breach of every system the organization owns.
 
 So the deployment is not "the same recipe with a different image". Three
 properties are non-negotiable, and each one is a decision that most quick-start

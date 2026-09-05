@@ -119,7 +119,7 @@ account. The reason is that the interesting way in is rarely the administrator:
 it is a salesperson's password reused from somewhere that was breached, and a
 single-factor login turns that into access. This is a property of the identity
 provider rather than of this application, which is why it belongs to the
-organisation and not to a deployment.
+organization and not to a deployment.
 
 **Access is through an identity-aware proxy** when the system is critical
 enough that reaching the login page at all should require being someone. That
@@ -148,7 +148,7 @@ as errors, which is indistinguishable from a real crash to anything watching.
 
 **The health check has to be told which host to claim.** It probes the pod
 directly and sends no host header, so an application that routes by hostname
-does not recognise the request and answers 404. The check fails, the backend is
+does not recognize the request and answers 404. The check fails, the backend is
 marked unhealthy, and every request returns 503 while the application is
 running perfectly.
 
@@ -156,7 +156,7 @@ running perfectly.
 nonetheless recoverable from the deployment tool's own release history, in
 clear, by anyone who can read secrets in that namespace.
 
-**Values the chart no longer recognises are ignored silently.** The file named
+**Values the chart no longer recognizes are ignored silently.** The file named
 keys for a component the chart has since replaced, and nothing reported it.
 
 What this does not cover: a single instance on one node, with no backup for the
