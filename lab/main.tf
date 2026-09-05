@@ -101,6 +101,19 @@ module "network" {
   # The cluster draws pod and service addresses from the secondary ranges
   # rather than from the subnet's primary range. The pod range caps how many
   # pods the cluster can ever run and cannot be changed afterwards.
+  # The ports the probes may reach, which have to be the ports the workloads
+  # actually serve on.
+  #
+  # This is a coupling that is easy to miss and produces a failure with no
+  # useful symptom. The application is healthy, the health check is configured
+  # correctly, and the probe is dropped by a firewall that names neither: the
+  # backend is marked unhealthy and every request gets a 503, with nothing in
+  # any log connecting it to a port list in the network.
+  #
+  # It was found here by one workload answering on 8080, which was allowed, and
+  # another on 5678, which was not.
+  health_check_ports = ["80", "443", "5678", "8080"]
+
   networks = {
     for env, cfg in local.environments : env => {
       subnet_cidr = cfg.subnet_cidr

@@ -18,7 +18,10 @@ spec:
   rules:
     - backendRefs:
         - name: n8n
-          port: 5678
+          # The service's port, not the container's. A route naming a port the
+          # service does not publish is accepted and answers 500, because what
+          # is wrong is the reference rather than the request.
+          port: 80
 ---
 apiVersion: networking.gke.io/v1
 kind: HealthCheckPolicy
@@ -30,6 +33,9 @@ spec:
     config:
       type: HTTP
       httpHealthCheck:
+        # The container's port, not the service's. This probe reaches the pod
+        # directly rather than through the service, so the two numbers are
+        # different and both are right in their own place.
         port: 5678
         requestPath: /healthz
   targetRef:

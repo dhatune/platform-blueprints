@@ -30,7 +30,9 @@ spec:
     config:
       type: HTTP
       httpHealthCheck:
-        port: 80
+        # The container's port. The probe reaches the pod directly rather than
+        # through the service, and the service publishes a different number.
+        port: 8080
         requestPath: /alive
   targetRef:
     group: ""
