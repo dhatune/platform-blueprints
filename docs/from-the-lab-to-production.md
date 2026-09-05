@@ -121,9 +121,20 @@ suffix**, which exists so a lab can be rebuilt inside the thirty days a
 destroyed project's identifier is held. A real environment has a name that
 never changes, and that changes how the stack is written.
 
-**Nobody has run this twice from nothing.** Until the same commit produces the
-same working environment on a machine that is not the author's, "it works" is a
-statement about one afternoon.
+**It has been run twice from nothing, on one machine.** The same commit built
+two environments that had never existed and both answered on their own names
+over HTTPS, with the firewall refusing an injection on every one of the six
+services while ordinary traffic passed.
+
+That is worth something and it is not the whole claim. It has not been run by
+anyone else, on another machine, from a clean checkout, and until it has, the
+things that are true only here are invisible: a tool that happens to be
+installed, a credential that happens to be cached, a shell that happens to be
+new enough.
+
+The second environment is what found most of the defects in this repository.
+Every one of them was hidden while the environment being tested was one the
+author had already repaired by hand.
 
 ---
 
