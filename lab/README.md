@@ -117,6 +117,18 @@ same day.
 terraform destroy
 ```
 
-The one thing destroy does not remove is what the record publisher wrote into
-your zone, because it runs in a mode that cannot delete. Those come out by
-hand, which is the cost ADR 26 accepts on purpose.
+Destroy does not finish on its own. The record publisher runs in a mode that
+cannot delete, so the names it wrote outlive it, and a zone holding records
+cannot be deleted: the destroy stops partway through reporting that the zone is
+not empty.
+
+Remove them first, then destroy again:
+
+```
+gcloud dns record-sets list --zone=<the environment's zone> \
+  --project=<dns project> --format='value(name,type,ttl,rrdatas)'
+```
+
+Everything except the NS and SOA records belongs to the controller and can go.
+This is the cost ADR 26 accepts on purpose, and it is larger than that decision
+first suggested: not untidiness, but a teardown that needs a person.

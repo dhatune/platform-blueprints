@@ -67,3 +67,11 @@ description of what exists, which is the property it was supposed to have.
 A periodic reconciliation, run by a person against a list of what is actually
 deployed, is the compensating control. Naming it here is not the same as having
 it, and this repository does not have it.
+
+There is a second cost that was not obvious until an environment was torn down.
+The records outlive the thing that made them, and a zone cannot be deleted
+while it still holds any. So destroying an environment fails partway through,
+reporting that a zone is not empty, and the operator has to remove by hand the
+records the controller was forbidden to remove. The decision does not change:
+the alternative is a controller that can delete, which is what this is for. But
+teardown is a step in the lifecycle and this makes it a manual one.
