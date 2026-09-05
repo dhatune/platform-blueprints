@@ -11,8 +11,9 @@ suffix = "abc123"
 dns_project = "example-dns-project"
 dns_domain  = "lab.example.test"
 
-# Development is applied and verified alone first, then production is added
-# by widening this list.
-enabled_environments = ["dev"]
+# Development is applied and verified alone first, then production is added by
+# widening this list. Narrowing it again destroys the one removed, so the two
+# environments coexist only while both are named here.
+enabled_environments = ["dev", "prod"]
 acme_email = "platform@example.test"
 dns_parent_zone = "example-zone"
