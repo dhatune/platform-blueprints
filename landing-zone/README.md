@@ -1,5 +1,30 @@
 # GCP Landing Zone
 
+## Why this exists at all
+
+A landing zone is what gets built last. Not postponed, simply never considered:
+work starts with what has to ship, and the estate grows outward from the first
+project somebody opened.
+
+By the time anyone asks how environments are separated or who holds which
+permission, the answer was already settled by decisions nobody made. The
+foundation is there. It was never designed.
+
+So it does not match how the company approves changes, it does not match the
+security policy that was written separately, and it does not match what the
+industry and the regulator already expect. Each of those is cheap to satisfy
+before the first workload and expensive after, because afterwards it means
+moving things that are running.
+
+That is the argument for doing this first. ADR 23 states it, along with what it
+costs: a delay spent on structure nobody outside the team will see, and some
+guesses that will turn out wrong.
+
+The decisions behind what follows are ADR 4 on separate networks, ADR 5 on
+keys, ADR 10 on groups, ADR 11 on constraints and ADR 23 on building this
+first.
+
+
 The organisation layout a platform sits on: folder hierarchy, a Shared VPC host
 with physically isolated environments, and one project per product per
 environment.
