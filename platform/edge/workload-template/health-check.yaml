@@ -11,8 +11,8 @@
 apiVersion: networking.gke.io/v1
 kind: HealthCheckPolicy
 metadata:
-  name: erp
-  namespace: erp
+  name: REPLACE_ME_WORKLOAD
+  namespace: REPLACE_ME_NAMESPACE
 spec:
   default:
     config:
@@ -24,4 +24,4 @@ spec:
   targetRef:
     group: ""
     kind: Service
-    name: erp-erpnext
+    name: REPLACE_ME_SERVICE

@@ -6,43 +6,70 @@ certificate in front of it, and what each of the four pieces costs.
 Nothing here is specific to the workload behind it. The example targets the ERP
 in `platform/erpnext` because that is what it was verified against.
 
-## The four pieces
+## What is here
 
 ```
-external-dns.yaml    publishes the hostname into a zone it does not own
-cert-issuer.yaml     obtains the certificate, by writing DNS rather than
-                     answering on the name
-gateway.yaml         the load balancer, the certificate it serves, and the
-                     routes: one proxying, one redirecting 80 to 443
-health-check.yaml    tells the probe which host to claim
-backend-policy.yaml  puts the application firewall in front of the backend
+base/                the shared edge, applied once per environment
+  external-dns.yaml    publishes hostnames into a zone it does not own
+  cert-issuer.yaml     obtains certificates by writing DNS
+  gateway.yaml         the one entry point, its wildcard certificate, and
+                       the redirect from 80
+overlays/dev/        the values that differ, per environment
+overlays/prod/
+workload-template/   what a workload copies to become reachable: its route,
+                     its health check and its firewall attachment
 ```
 
-## Filling these in
+One Gateway for the whole environment rather than one per service. Each
+Gateway builds its own load balancer and is billed for it, so three services
+with three Gateways pay three times to do one job. The listener carries a
+wildcard, so adding a service costs a route and nothing here.
 
-The manifests carry placeholders rather than values. Each one has a source,
-and all but two come from the stack that built the cluster:
+A wildcard certificate can only be obtained by writing DNS, because the other
+challenge answers on a name and a wildcard is not one. ADR 25 chose the DNS
+challenge for a different reason; this comes free with it.
+
+## Where your own values go
+
+One file per environment, not in version control, in the same arrangement the
+Terraform stack uses:
+
+```
+cp overlays/dev/values.env.example overlays/dev/values.env
+```
+
+Fill it from the stack that built the cluster:
 
 ```
 terraform -chdir=../../lab output -json environments
 ```
 
-| Placeholder | Where the value comes from |
+| Key | What it is |
 | --- | --- |
-| `REPLACE_ME_HOST` | the hostname you are serving: a name of your choosing under the environment's `dns_domain`, for example `erp.dev.lab.example.test` |
-| `REPLACE_ME_DOMAIN` | that environment's `dns_domain`, and nothing wider. It is the only thing stopping this controller from touching the rest of the zone |
-| `REPLACE_ME_DNS_PROJECT` | the project holding the zone, `dns_project` in the stack's variables |
-| `REPLACE_ME_CLUSTER_ID` | the environment's `cluster`. It has to be unique per cluster, because it is how two clusters sharing a zone tell their records apart |
-| `REPLACE_ME_SECURITY_POLICY` | the environment's `security_policy` |
-| `REPLACE_ME_EMAIL` | an address you read. The certificate authority writes to it before a certificate expires, and it is the only warning you get |
+| `wildcard` | the names this environment serves, as one wildcard: `*.dev.lab.example.test` |
+| `domainFilter` | the subtree the publisher may write into, and nothing wider |
+| `dnsProject` | the project holding the zone, usually not this environment's |
+| `txtOwnerId` | unique per cluster; two clusters sharing it fight over every record |
+| `dnsServiceAccount` | the identity both controllers assume, which holds no key |
+| `acmeEmail` | an address somebody reads, and the only expiry warning there is |
 
-The service account annotation in `external-dns.yaml` is already the identity
-the stack creates, so it needs the project substituted and nothing else.
+Then `kubectl apply -k overlays/dev`.
 
-Substituting by hand is fine for one environment and is the wrong answer for
-two. Whatever templating the rest of an estate already uses belongs here; this
-repository does not pick one, because that choice belongs to the estate rather
-than to the pattern.
+## The blank that gets deployed
+
+Kustomize substitutes by selecting the objects to change. A selector that
+matches nothing is **not an error**: it prints no warning, exits successfully,
+and the placeholder survives into the output. What reaches the cluster is a
+Gateway whose hostname is the literal string `REPLACE_ME_WILDCARD`, and every
+tool in the chain reported success.
+
+Rendering the overlay and reading the result is the only place that failure is
+visible, so the checks do exactly that and refuse output that still contains a
+blank. Two other things they check, for the same reason: that the example file
+still has every key the overlay asks for, and that no two environments share a
+`txtOwnerId`. That last one no templating tool can catch, and it is only ever
+wrong because somebody copied one environment to make the next, which is how
+the next one gets made.
 
 ## The ordering problem, which is the whole reason for the DNS challenge
 

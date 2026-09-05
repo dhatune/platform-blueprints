@@ -8,12 +8,12 @@
 apiVersion: networking.gke.io/v1
 kind: GCPBackendPolicy
 metadata:
-  name: erp
-  namespace: erp
+  name: REPLACE_ME_WORKLOAD
+  namespace: REPLACE_ME_NAMESPACE
 spec:
   default:
     securityPolicy: REPLACE_ME_SECURITY_POLICY
   targetRef:
     group: ""
     kind: Service
-    name: erp-erpnext
+    name: REPLACE_ME_SERVICE
