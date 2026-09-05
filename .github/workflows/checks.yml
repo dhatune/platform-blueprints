@@ -181,6 +181,11 @@ jobs:
           done
           exit $fail
 
+      - name: Refuse a probe port the network does not allow
+        run: |
+          pip install pyyaml >/dev/null
+          python3 .github/scripts/check_health_check_ports.py
+
       - name: Refuse two environments that claim the same DNS records
         run: |
           # The record publisher marks what it owns with an identifier. Two

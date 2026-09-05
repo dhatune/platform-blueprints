@@ -139,33 +139,18 @@ else
     --wait --timeout 10m >/dev/null
 fi
 
-echo "==> Resolving images through the estate's own registry"
+echo "==> Copying images into the repository this estate holds"
 # Nothing here is built. Every workload is somebody else's image, which makes
 # where it is pulled from a decision rather than a detail.
 #
-# Each image is resolved through the repository this estate controls, and what
-# gets deployed is the digest that comes back rather than the tag that was
-# asked for. A tag is a pointer somebody else can move without telling you; a
-# digest is the image.
+# The copy runs as a build inside the platform, not here. Copying through this
+# machine was the first attempt and it was wrong: source and destination are
+# both remote, so every byte crossed the operator's link twice and one image
+# took over an hour. It also hit the public registry's anonymous rate limit,
+# which the platform's own fetch does not.
 #
-# The resolution happens on the registry's side, not here. Copying the bytes
-# through this machine was the first attempt and it was wrong: the source and
-# the destination are both remote, so every byte crossed the link twice, and a
-# single image took over an hour. It also hit the upstream's anonymous rate
-# limit, which the registry does not, because it is not anonymous.
-#
-# What this is not: a copy held independently of upstream. The proxy caches
-# what it serves, which is close, and ADR 12 asks for a repository holding an
-# image that was reviewed. Closing that gap means a build running inside the
-# platform rather than on a laptop, and it is not done here.
-if ! command -v crane >/dev/null 2>&1; then
-  echo "crane is required to resolve image digests. Install it from" >&2
-  echo "  https://github.com/google/go-containerregistry" >&2
-  exit 1
-fi
-
-gcloud auth configure-docker "$(echo "$REGISTRY" | cut -d/ -f1)" --quiet >/dev/null 2>&1
-
+# It is skipped when every image is already held, because the copy is the slow
+# part and it only has to happen when an image in the list changes.
 IMAGES_FILE="${HERE}/../platform/images.env"
 
 # Associative arrays need a shell newer than the one macOS ships, and a script
@@ -173,9 +158,39 @@ IMAGES_FILE="${HERE}/../platform/images.env"
 pinned_set() { eval "PINNED_$1=\"$2\""; }
 pinned_get() { eval "printf '%s' \"\${PINNED_$1}\""; }
 
+held_everything() {
+  while IFS='=' read -r name upstream; do
+    case "$name" in ''|\#*) continue ;; esac
+    crane digest "${REGISTRY}/apps/${name}:${upstream##*:}" >/dev/null 2>&1 || return 1
+  done < "$IMAGES_FILE"
+  return 0
+}
+
+if ! command -v crane >/dev/null 2>&1; then
+  echo "crane is required to read image digests. Install it from" >&2
+  echo "  https://github.com/google/go-containerregistry" >&2
+  exit 1
+fi
+
+gcloud auth configure-docker "$(echo "$REGISTRY" | cut -d/ -f1)" --quiet >/dev/null 2>&1
+
+if held_everything; then
+  echo "    every image is already held, skipping the copy"
+else
+  echo "    submitting the copy; this is slow the first time and only the first"
+  retry 2 "image copy" gcloud builds submit "${HERE}/../platform" \
+    --config="${HERE}/../platform/promote-images.yaml" \
+    --substitutions="_REGISTRY=${REGISTRY}" \
+    --project="$(echo "$REGISTRY" | cut -d/ -f2)" \
+    --quiet >/dev/null
+fi
+
+echo "==> Resolving what will be deployed"
+# The tag says which image was asked for. The digest is the image, and it is
+# what goes into the manifests: a tag is a pointer somebody can move.
 while IFS='=' read -r name upstream; do
   case "$name" in ''|\#*) continue ;; esac
-  ref="${REGISTRY}/docker/${upstream}"
+  ref="${REGISTRY}/apps/${name}:${upstream##*:}"
   digest=""
   for attempt in 1 2 3; do
     if digest="$(crane digest "$ref" 2>/dev/null)" && [ -n "$digest" ]; then
@@ -188,7 +203,7 @@ while IFS='=' read -r name upstream; do
     echo "Could not resolve ${ref}." >&2
     exit 1
   fi
-  pinned_set "$name" "${REGISTRY}/docker/${upstream%%:*}@${digest}"
+  pinned_set "$name" "${REGISTRY}/apps/${name}@${digest}"
   echo "    ${name} -> ${digest}"
 done < "$IMAGES_FILE"
 
@@ -303,7 +318,7 @@ helm upgrade --install erp frappe/erpnext \
   --values "${HERE}/../platform/erpnext/helm/values.yaml" \
   --set "persistence.worker.storageClass=nfs" \
   --set "persistence.logs.storageClass=nfs" \
-  --set "image.repository=${REGISTRY}/docker/frappe/erpnext" \
+  --set "image.repository=${REGISTRY}/apps/erpnext" \
   --set "image.tag=${ERP_TAG}" \
   --set "mariadb.enabled=true" \
   --set "dbHost=erp-mariadb" \

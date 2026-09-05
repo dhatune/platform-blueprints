@@ -89,6 +89,11 @@ module "host_project" {
     "dns.googleapis.com",
     "container.googleapis.com",
     "artifactregistry.googleapis.com",
+
+    # The copy of each image into the repository this estate holds runs as a
+    # build inside the platform rather than on whoever is installing. ADR 12,
+    # and the reason is in platform/promote-images.yaml.
+    "cloudbuild.googleapis.com",
   ]
 }
 
@@ -324,4 +329,21 @@ resource "google_dns_record_set" "delegation" {
   type         = "NS"
   ttl          = 300
   rrdatas      = google_dns_managed_zone.environment[each.key].name_servers
+}
+
+# The build that copies images needs to write to the repository it copies into.
+#
+# The account is created by enabling the API, so this binding is made against a
+# name that exists only after that has happened. Making it before produces a
+# failure that names a principal nobody wrote.
+data "google_project" "host" {
+  project_id = module.host_project.project_id
+}
+
+resource "google_project_iam_member" "build_writes_images" {
+  project = module.host_project.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${data.google_project.host.number}@cloudbuild.gserviceaccount.com"
+
+  depends_on = [module.host_project]
 }
