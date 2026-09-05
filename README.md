@@ -227,6 +227,12 @@ and is named here rather than left to be noticed.
 that cost something annotated, a persistent DNS zone, and the reasoning about
 benches. Not deployed from this repository yet, and it says so.
 
+**`lab/`**: the stack that builds an environment to verify the rest, and the
+one script that installs everything into it. It builds two environments called
+development and production, and neither is a production environment;
+[what that would take](docs/from-the-lab-to-production.md) is written down
+rather than left to be discovered.
+
 **`docs/decisions`**: twenty-seven decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 

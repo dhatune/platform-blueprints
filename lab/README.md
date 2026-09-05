@@ -94,6 +94,18 @@ subtree, the identity the controllers assume, the firewall to attach, and the
 command that writes a kubeconfig. `platform/edge/` says which of them goes
 where.
 
+## It is called production and it is not one
+
+The second environment carries the same components as the first, deliberately,
+so that neither is a reduced rehearsal of the other. That is a different claim
+from being ready to carry a business: nothing here is backed up, secrets are
+generated into the cluster rather than referenced from a manager, the ERP's
+shared storage is a single pod on a single disk, and the password manager is
+reachable by anyone who can resolve its name.
+
+The full list, with what each one costs to leave alone, is in
+[what this lab is not](../docs/from-the-lab-to-production.md).
+
 ## What it costs
 
 Two clusters, four interruptible nodes, two load balancers once the entry
