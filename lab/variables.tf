@@ -67,3 +67,14 @@ variable "enabled_environments" {
   type        = list(string)
   default     = ["dev", "prod"]
 }
+
+variable "acme_email" {
+  description = <<-EOT
+    Address the certificate authority writes to before a certificate expires.
+
+    It is here rather than in the manifests so that every value an environment
+    needs comes from one file, and the manifests are generated from the stack
+    rather than filled in by hand.
+  EOT
+  type        = string
+}

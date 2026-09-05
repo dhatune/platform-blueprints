@@ -153,6 +153,12 @@ resource "google_compute_subnetwork_iam_member" "network_user" {
 module "registry" {
   source = "../landing-zone/modules/registry"
 
+  # The repository cannot be created until the API is enabled on the project
+  # that holds it. Terraform does not infer that from a project ID passed as a
+  # string, so it tries both at once and the create fails with the API
+  # reporting itself disabled on a project that is enabling it.
+  depends_on = [module.host_project]
+
   project_id = module.host_project.project_id
   region     = var.region
 
@@ -254,6 +260,11 @@ resource "google_project_iam_member" "dns_admin" {
 # the one answering certificate challenges. Both need exactly this permission,
 # and neither holds a key. ADR 5 and ADR 25.
 resource "google_service_account_iam_member" "dns_workload_identity" {
+  # The identity pool is created with the cluster and does not exist before it.
+  # Without this the binding is attempted first and is refused for naming a
+  # pool that has not been made yet, which reads like a typo in the pool name.
+  depends_on = [module.cluster]
+
   for_each = merge([
     for env in keys(local.environments) : {
       for sa in ["external-dns/external-dns", "cert-manager/cert-manager"] :

@@ -55,6 +55,31 @@ terraform apply dev.tfplan
 Verify, then widen the list to `["dev", "prod"]` and repeat. The second plan
 also rechecks that development still matches what is written here.
 
+## Building the rest of it
+
+`terraform apply` produces a cluster and nothing running on it. One script
+takes it from there:
+
+```
+./bootstrap.sh dev
+```
+
+It reads the stack's outputs, generates the manifests' values file from them,
+fetches credentials, installs the certificate controller at a pinned version,
+applies the edge, and waits for the certificate.
+
+Two things it does deliberately. The values file is **generated rather than
+edited**, so an environment is described in one place; a value typed in two
+places is a value that will eventually disagree with itself. And the
+certificate controller's version is pinned, because taking whatever is newest
+means the cluster built today and the cluster built next month run different
+code, and the difference surfaces when one of them behaves differently.
+
+It is a script rather than part of the Terraform apply because the controller's
+custom resources have to be registered before anything that uses them, and
+because a cluster that Terraform both creates and then installs into makes one
+apply that cannot be re-run when half of it fails.
+
 ## What it hands the next step
 
 The workload sections need values this stack generates. They are outputs

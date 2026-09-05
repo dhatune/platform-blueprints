@@ -14,3 +14,4 @@ dns_domain  = "lab.example.test"
 # Development is applied and verified alone first, then production is added
 # by widening this list.
 enabled_environments = ["dev"]
+acme_email = "platform@example.test"

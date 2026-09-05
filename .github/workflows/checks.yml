@@ -205,7 +205,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - run: shellcheck platform/vaultwarden/backup/*.sh
+      - run: shellcheck platform/vaultwarden/backup/*.sh lab/bootstrap.sh
 
   links:
     name: links
