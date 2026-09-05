@@ -2,7 +2,15 @@
 organization_id = "000000000000"
 billing_account = "XXXXXX-XXXXXX-XXXXXX"
 
-# The zone lives elsewhere and outlives this stack.
+# A destroyed project's identifier is held for thirty days, so a rerun inside
+# that window needs a value that has not been used before.
+suffix = "abc123"
+
+# The zone lives elsewhere and outlives this stack. See ADR 26 for what a
+# controller may and may not do to a zone it does not own.
 dns_project = "example-dns-project"
 dns_domain  = "lab.example.test"
-suffix = "abc123"
+
+# Development is applied and verified alone first, then production is added
+# by widening this list.
+enabled_environments = ["dev"]
