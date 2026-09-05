@@ -227,7 +227,7 @@ and is named here rather than left to be noticed.
 that cost something annotated, a persistent DNS zone, and the reasoning about
 benches. Not deployed from this repository yet, and it says so.
 
-**`docs/decisions`**: twenty-three decisions, each with what was rejected and what
+**`docs/decisions`**: twenty-four decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 
 **`.github/workflows`**: checks that run without credentials, which is exactly
@@ -287,6 +287,7 @@ short, dated, and state what was rejected as well as what was chosen.
 21. [The security posture service is read on a schedule](docs/decisions/0021-security-posture-is-read-on-a-schedule.md)
 22. [Secrets are referenced, never passed through a deployment tool](docs/decisions/0022-secrets-are-referenced-never-passed.md)
 23. [The foundation is built first, because it is the thing that gets built last](docs/decisions/0023-the-foundation-is-built-first.md)
+24. [What development proves is that it works in development](docs/decisions/0024-development-proves-it-works-in-development.md)
 
 ---
 
