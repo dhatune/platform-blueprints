@@ -316,6 +316,24 @@ resource "google_dns_managed_zone" "environment" {
   name        = "${local.prefix}-${each.key}"
   dns_name    = "${each.value.dns_domain}."
   description = "Names published by the ${each.key} cluster. Managed by a controller."
+
+  # Destroying this zone removes the records in it first.
+  #
+  # Without it a teardown stops partway through: the publisher runs in a mode
+  # that cannot delete, so its records outlive it, and a zone holding records
+  # cannot be deleted. Somebody then removes by hand exactly what the
+  # controller was forbidden to remove, which is a manual step in the middle
+  # of an automated lifecycle.
+  #
+  # This does not weaken ADR 26 and the difference is worth being precise
+  # about. That decision is a limit on what a controller may do continuously,
+  # unattended, to a zone it shares. This is an operator destroying a zone that
+  # belongs to one environment and holds nothing else, deliberately, once. The
+  # actor, the blast radius and the intent are all different.
+  #
+  # It would be wrong on a zone that carries anything the estate did not put
+  # there. This one is created per environment for exactly that reason.
+  force_destroy = true
 }
 
 # The delegation. Without it the zone exists and nothing on the internet knows

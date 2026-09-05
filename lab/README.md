@@ -108,27 +108,27 @@ The full list, with what each one costs to leave alone, is in
 
 ## What it costs
 
-Two clusters, four interruptible nodes, two load balancers once the entry
-points exist, two firewall policies and their disks. The compute is the
-predictable part and the rest is not, so the honest advice is to destroy it the
-same day.
+Two clusters, four interruptible nodes and two that are not, two load balancers
+once the entry points exist, two firewall policies and their disks. The compute
+is the predictable part and the rest is not, so the honest advice is to destroy
+it the same day.
+
+## Taking it down
 
 ```
-terraform destroy
+./teardown.sh dev
 ```
 
-Destroy does not finish on its own. The record publisher runs in a mode that
-cannot delete, so the names it wrote outlive it, and a zone holding records
-cannot be deleted: the destroy stops partway through reporting that the zone is
-not empty.
+Not `terraform destroy` on its own, and the reason is not a shortcoming in it.
+Two of the things that have to go were never created by Terraform: the load
+balancer and its backend services are built by a controller inside the cluster
+when a Gateway appears, and they hold a reference to the application firewall.
+Terraform deletes the firewall, the platform refuses because something still
+uses it, and the destroy stops with resources standing and a bill running.
 
-Remove them first, then destroy again:
-
-```
-gcloud dns record-sets list --zone=<the environment's zone> \
-  --project=<dns project> --format='value(name,type,ttl,rrdatas)'
-```
-
-Everything except the NS and SOA records belongs to the controller and can go.
-This is the cost ADR 26 accepts on purpose, and it is larger than that decision
-first suggested: not untidiness, but a teardown that needs a person.
+The script removes the entry point first, waits for the platform to release
+what it built, and then destroys the stack. The DNS zone deletes its own
+records on the way out, which it has to: the publisher runs in a mode that
+cannot delete them and a zone holding records cannot be deleted. ADR 26 is
+about what a controller may do continuously to a zone it shares; this is an
+operator destroying a zone that belongs to one environment, once, on purpose.
