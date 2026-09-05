@@ -124,3 +124,157 @@ never changes, and that changes how the stack is written.
 **Nobody has run this twice from nothing.** Until the same commit produces the
 same working environment on a machine that is not the author's, "it works" is a
 statement about one afternoon.
+
+---
+
+# The changes, concretely
+
+The sections above say what is missing. This one says what to change and where,
+because a gap described in prose is a gap nobody closes.
+
+Each entry has the same shape: what it is now, why it is that way, and the
+change. The "why" matters as much as the change. Most of these were not
+oversights, they were the cheapest thing that let the verification run, and
+knowing which is which tells you what is safe to keep.
+
+## The cluster: `landing-zone/modules/cluster/main.tf`
+
+**One control plane instead of three.**
+Now: `location = var.zone`, and the lab passes `us-east1-b`.
+Why: a zonal cluster was enough to prove the components work, and the
+verification existed for an afternoon.
+Change: pass a region rather than a zone. The control plane is then replicated
+and survives one zone going away, and node pools place nodes across the
+region's zones, which multiplies the node count by the number of zones.
+
+**Interruptible nodes carrying everything except what complained.**
+Now: `spot = true` on the default pool.
+Why: ADR 8 is about the difference between restarting safely and being evicted
+safely, and the stateful pool exists because one workload declared it needed
+that. Everything else stayed on interruptible capacity because nothing forced
+the question.
+Change: the decision belongs per workload rather than per default. Interruptible
+capacity is right for work whose restart costs nothing and wrong for anything
+recorded as started.
+
+**Nothing decides when the cluster upgrades.**
+Now: neither `release_channel` nor `maintenance_policy` is declared, so the
+platform upgrades on its own schedule.
+Why: never came up. A cluster that lives for hours is not upgraded.
+Change: declare both. The channel decides how new the version is and how soon
+it moves; the maintenance policy decides what hours are acceptable. Without
+them, a node pool recreates itself during business hours and nobody scheduled
+it.
+
+**The node count is whatever was typed.**
+Now: `node_count` fixed, no `autoscaling` block, no `management` block.
+Why: two nodes was enough to run three workloads once.
+Change: add `autoscaling` with a floor and a ceiling, and `management` with
+`auto_repair` and `auto_upgrade`. Add `upgrade_settings` so an upgrade adds a
+node before taking one away rather than the reverse.
+
+**Anyone who can reach the API server can try to.**
+Now: no `master_authorized_networks_config`, no `private_cluster_config`.
+Why: the operator was on a laptop on an unknown network, and restricting access
+would have meant maintaining a list of addresses for a lab.
+Change: private nodes plus an authorized network list. Private nodes need a
+Cloud NAT for outbound, which this estate declares and leaves commented for
+exactly this moment.
+
+**Nothing verifies what an image is.**
+Now: no `binary_authorization`.
+Why: images are pulled by digest, which fixes what runs but says nothing about
+who built it.
+Change: require attestations, which only means something once something signs
+them. It is a policy, a signer and a step in whatever builds the images, and
+adopting it half way is worse than not adopting it.
+
+**The cluster's own data is encrypted with the platform's key.**
+Now: no `database_encryption` block.
+Why: it is on by default and the lab holds nothing.
+Change: point it at a key the organization controls, so that destroying the key
+destroys the contents rather than trusting a deletion.
+
+**Only system metrics are collected and nothing says where logs go.**
+Now: `monitoring_config` is declared with `SYSTEM_COMPONENTS`, `logging_config`
+is not declared at all.
+Why: the default enables every billable collector and the charge arrives under a
+name that does not mention the cluster, so it was narrowed deliberately. That
+part was right.
+Change: add application metrics, declare `logging_config`, and decide retention
+at ingestion rather than paying to store what nobody reads. ADR 14.
+
+## Storage
+
+**The ERP writes to a single pod.**
+Now: an NFS server in the cluster, on a single-attach disk.
+Why: a managed file service is billed on provisioned capacity with a floor far
+above what one bench uses, often more than the rest of the cluster combined.
+For an internal system where an hour of downtime during a node event is
+acceptable, this is the right answer and the section says so.
+Change: a managed file service instance, and the storage class points at it.
+The deciding question is not cost, it is whether the ERP stopping for an hour
+during an ordinary node upgrade is acceptable.
+
+**The encrypted class is encrypted by the platform.**
+Now: `platform/storage/encrypted-standard.yaml` uses the default key.
+Why: a customer-managed key needs a key ring, a key, and a grant, and the lab
+has nothing worth encrypting.
+Change: create the key and add `disk-encryption-kms-key` to the class. The line
+is already there, commented, with the shape of the value.
+
+**Nothing is backed up.**
+Now: no backup for the ERP's database, the automation service's database, or
+the password manager's volume.
+Why: nothing here is meant to survive.
+Change: a backup plan for the cluster's volumes, and a schedule per database
+that dumps rather than snapshots, because a snapshot of a running database is
+valid often enough to be trusted and corrupt often enough to matter. Then a
+restore that runs on a schedule and fails loudly, because ADR 7 is that a
+backup nobody has restored is a belief.
+
+## Identity and secrets
+
+**Secrets are generated by the installer.**
+Now: `lab/bootstrap.sh` creates them with `openssl` and applies them.
+Why: it makes the environment reproducible from nothing, which is what the lab
+is for.
+Change: a secret manager holding them, and a driver that mounts them, so the
+manifests reference rather than receive. ADR 22. Two specifics: the automation
+service's encryption key must survive the cluster, because losing it costs
+every stored credential even with a perfect database backup; and the ERP's
+administrative password has to be set from a value taken out of the manager
+rather than printed once to a terminal.
+
+**The password manager is reachable by anyone who can resolve its name.**
+Now: an ordinary route to an ordinary service.
+Why: putting an identity check in front needs an identity provider, a consent
+screen and a group, none of which a lab has.
+Change: an identity-aware proxy in front of that backend, so an
+unauthenticated request never arrives and a flaw in the application's own login
+cannot be reached by a stranger. ADR 16.
+
+## The stack itself: `lab/`
+
+**The environment name carries a random suffix.**
+Now: `suffix` is a variable appended to every project ID.
+Why: a destroyed project's identifier is held for thirty days, so a lab that is
+rebuilt often needs a new name each time.
+Change: a real environment has a name that never changes. Remove the suffix,
+and with it the ability to rebuild the same environment twice in a month, which
+is a property production should not want.
+
+**Applies happen from a laptop.**
+Now: `terraform apply` run by whoever is installing.
+Why: there is one operator.
+Change: a pipeline that plans on a pull request and applies from the default
+branch after review, which is what `docs/git-flow.md` describes and nothing
+enforces.
+
+**The probe port list is maintained by hand.**
+Now: `health_check_ports` in `lab/main.tf`, with a check that refuses a
+mismatch.
+Why: a manifest cannot open a firewall and a firewall cannot read a manifest.
+Change: nothing, probably. The coupling is real and the check makes it loud,
+which is the honest treatment. It is here because it will look like an
+oversight to the next reader and it is not.
