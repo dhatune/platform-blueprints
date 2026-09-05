@@ -111,7 +111,7 @@ person. This is not tidiness. When someone leaves, their access has to end, and
 if bindings name individuals that means finding every place their address
 appears across the whole estate. Nobody does that reliably. A group makes it one
 action in one place. Primitive roles are refused at plan time, and so is any
-attempt to give the applying identity a role that could change IAM policy , 
+attempt to give the applying identity a role that could change IAM policy ,
 because an identity that can widen its own access makes the approval gate in
 front of it decorative.
 

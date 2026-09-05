@@ -101,7 +101,7 @@ on the next instance unless they are on the mount.
 Neither is safer. They make different mistakes easy, and the choice comes down
 to which mistake you would rather be exposed to.
 
-Kubernetes lets you keep SQLite, which is simpler and genuinely adequate here , 
+Kubernetes lets you keep SQLite, which is simpler and genuinely adequate here ,
 but it puts the burden on you to prevent a second replica, and the enforcement
 is a volume access mode and an update strategy rather than anything obvious.
 Get it wrong and the database corrupts quietly.

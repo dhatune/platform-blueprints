@@ -1,4 +1,4 @@
-# Secrets and local config — never commit
+# Secrets and local config, never commit
 .env
 .env.*
 !.env.example
@@ -49,7 +49,7 @@ build/
 .idea/
 .vscode/
 
-# Lock files belong to a root module — the directory Terraform is actually run
+# Lock files belong to a root module, the directory Terraform is actually run
 # in. A child module never has one read from it, so any lock file appearing
 # under modules/ is a leftover from running init there to validate, and
 # committing it implies a guarantee that nothing enforces.

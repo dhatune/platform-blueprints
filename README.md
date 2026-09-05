@@ -135,7 +135,7 @@ corrupt often enough to matter. And a second script restores that backup and
 checks it, because a backup that has never been restored is a belief.
 
 Built twice, for Kubernetes and for Cloud Run, because the platform decides the
-failure mode. Cloud Run can mount a bucket, so persistence is not the problem , 
+failure mode. Cloud Run can mount a bucket, so persistence is not the problem ,
 file locking is. SQLite on a mounted bucket runs, capped at one instance
 forever. And the signing key has to leave the container's own filesystem, or
 every new instance generates its own and users are logged out at random.

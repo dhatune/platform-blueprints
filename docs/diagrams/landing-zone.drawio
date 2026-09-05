@@ -87,7 +87,7 @@
         <mxCell id="e7" value="pulls images" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#2B6CB0;fontSize=10;" edge="1" parent="1" source="wl" target="ar"><mxGeometry relative="1" as="geometry" /></mxCell>
         <mxCell id="e8" value="mounts" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#DD6B20;fontSize=10;" edge="1" parent="1" source="wl" target="nfs"><mxGeometry relative="1" as="geometry" /></mxCell>
 
-        <mxCell id="title" value="Landing zone — as built and verified" style="text;html=1;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="title" value="Landing zone, as built and verified" style="text;html=1;fontSize=18;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="40" y="60" width="600" height="30" as="geometry" />
         </mxCell>
         <mxCell id="sub" value="Every element here was applied to a real organisation and destroyed. Dashed edges are the paths that failed first." style="text;html=1;fontSize=12;fontColor=#718096;" vertex="1" parent="1">
