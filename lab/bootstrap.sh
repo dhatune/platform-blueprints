@@ -289,6 +289,20 @@ ensure_secret vaultwarden vaultwarden-smtp \
   --from-literal=username="unused-in-lab" \
   --from-literal=password="unused-in-lab"
 
+echo "==> The edge"
+# The entry point, the record publisher and the certificate issuer's
+# configuration. It comes before the workloads because their routes attach to
+# the Gateway this creates, and a route whose parent does not exist is accepted
+# and does nothing.
+retry 3 "edge manifests" kubectl apply -k "$OVERLAY"
+
+echo "==> Storage classes"
+# The password manager's volume asks for an encrypted class by name rather than
+# taking the cluster's default, so that the choice is visible in the manifest.
+# The class has to exist before anything claims it, and a claim naming a class
+# that is absent stays pending forever with no event explaining why.
+retry 3 "storage class" kubectl apply -f "${HERE}/../platform/storage/encrypted-standard.yaml"
+
 echo "==> Shared storage for the ERP"
 # The sites directory is written by the web process, the scheduler and every
 # background worker, and they do not share a node. It needs ReadWriteMany, and
@@ -311,8 +325,49 @@ helm repo add frappe https://helm.erpnext.com >/dev/null 2>&1
 helm repo update >/dev/null 2>&1
 ERP_TAG="$(grep '^erpnext=' "$IMAGES_FILE" | sed 's/.*://')"
 ERP_HOST="erp.${DOMAIN}"
-ERP_ADMIN="$(openssl rand -hex 12)"
-ERP_DB_ROOT="$(openssl rand -hex 12)"
+
+# The database passwords are created once and referenced, never passed.
+#
+# Two reasons, and the second is the one that bit. A password supplied as a
+# chart value is stored with the release history in the cluster, in clear, so
+# anyone who can read secrets in the namespace can recover it, including after
+# the person who set it has left. And a value generated fresh on every run
+# disagrees with the one already stored, which the chart refuses with an error
+# about a missing key rather than about a changed password.
+#
+# Creating the secret first fixes both: the chart never holds the value, and a
+# second run finds what the first one made.
+# The name is ours rather than the one the chart would generate. Helm refuses
+# to adopt an object it did not create, so a secret sharing the templated name
+# blocks the install with a message about ownership metadata rather than about
+# the name.
+ensure_secret erp erp-db-credentials \
+  --from-literal=mariadb-root-password="$(openssl rand -hex 24)" \
+  --from-literal=mariadb-password="$(openssl rand -hex 24)" \
+  --from-literal=mariadb-replication-password="$(openssl rand -hex 24)"
+
+# The site's administrator password has the same problem and one more: it
+# cannot be read back from the application afterwards, only replaced. Keeping
+# it here means a second run does not silently create a second one that is
+# never used.
+ensure_secret erp erp-site-admin \
+  --from-literal=password="$(openssl rand -hex 12)"
+
+ERP_ADMIN="$(kubectl -n erp get secret erp-site-admin -o jsonpath='{.data.password}' | base64 -d)"
+
+# Whether the site already exists decides whether the creation job should run
+# at all. Asking for it again on a bench that has it is a job that fails and
+# stays red.
+if kubectl -n erp get job -l "app.kubernetes.io/name=erpnext" 2>/dev/null | grep -q new-site; then
+  CREATE_SITE=false
+  echo "    a site creation job already ran; not asking for another"
+else
+  CREATE_SITE=true
+fi
+
+# The alias mariadb.enabled exists for backward compatibility; the values the
+# database subchart actually reads live under its real name, which is why the
+# secret is set under mariadb-subchart rather than mariadb.
 helm upgrade --install erp frappe/erpnext \
   --namespace erp --create-namespace \
   --values "${HERE}/../platform/erpnext/helm/values.yaml" \
@@ -321,12 +376,11 @@ helm upgrade --install erp frappe/erpnext \
   --set "image.repository=${REGISTRY}/apps/erpnext" \
   --set "image.tag=${ERP_TAG}" \
   --set "mariadb.enabled=true" \
+  --set "mariadb-subchart.auth.existingSecret=erp-db-credentials" \
   --set "dbHost=erp-mariadb" \
-  --set "jobs.createSite.enabled=true" \
+  --set "jobs.createSite.enabled=${CREATE_SITE}" \
   --set "jobs.createSite.siteName=${ERP_HOST}" \
   --set "jobs.createSite.adminPassword=${ERP_ADMIN}" \
-  --set "mariadb.auth.rootPassword=${ERP_DB_ROOT}" \
-  --set "dbRootPassword=${ERP_DB_ROOT}" \
   --timeout 20m --wait=false >/dev/null
 retry 3 "erpnext manifests" kubectl apply -k "${HERE}/../platform/erpnext/overlays/${ENV}"
 
@@ -334,8 +388,9 @@ retry 3 "erpnext manifests" kubectl apply -k "${HERE}/../platform/erpnext/overla
 # read back afterwards, only replaced. It is printed once, here, because the
 # alternative is that nobody can get in.
 echo
-echo "    ERP administrator password: ${ERP_ADMIN}"
-echo "    It cannot be retrieved later, only replaced with:"
+echo "    ERP administrator password is in the secret erp/erp-site-admin:"
+echo "      kubectl -n erp get secret erp-site-admin -o jsonpath='{.data.password}' | base64 -d"
+echo "    The application cannot give it back, only take a new one:"
 echo "      kubectl -n erp exec deploy/erp-erpnext-conf-bench -- bench --site ${ERP_HOST} set-admin-password <new>"
 echo
 
