@@ -1,0 +1,19 @@
+# Attaches the edge policy to the backend the Gateway routes to.
+#
+# The policy exists in the platform; this is what puts it in front of a
+# specific service. Without it the policy is configured and applies to nothing,
+# which looks identical to being protected.
+#
+# The policy itself is landing-zone/modules/edge-policy.
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: erp
+  namespace: erp
+spec:
+  default:
+    securityPolicy: REPLACE_ME_SECURITY_POLICY
+  targetRef:
+    group: ""
+    kind: Service
+    name: erp-erpnext

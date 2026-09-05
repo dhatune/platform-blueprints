@@ -1,0 +1,27 @@
+# The load balancer's health check has to be told which host to claim.
+#
+# It probes the pod directly, and by default sends no Host header. An
+# application that routes by hostname, which most multi-tenant applications
+# do, does not recognize the request and answers 404. The check fails, the
+# backend is marked unhealthy, and the load balancer returns 503 for every
+# request while the application is running perfectly.
+#
+# Nothing in that chain says "health check". The application logs a 404 from an
+# internal address; the user sees 503.
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: erp
+  namespace: erp
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: 8080
+        requestPath: /api/method/ping
+        host: REPLACE_ME_HOST
+  targetRef:
+    group: ""
+    kind: Service
+    name: erp-erpnext
