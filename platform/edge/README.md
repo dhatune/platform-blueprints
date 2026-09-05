@@ -18,6 +18,32 @@ health-check.yaml    tells the probe which host to claim
 backend-policy.yaml  puts the application firewall in front of the backend
 ```
 
+## Filling these in
+
+The manifests carry placeholders rather than values. Each one has a source,
+and all but two come from the stack that built the cluster:
+
+```
+terraform -chdir=../../lab output -json environments
+```
+
+| Placeholder | Where the value comes from |
+| --- | --- |
+| `REPLACE_ME_HOST` | the hostname you are serving: a name of your choosing under the environment's `dns_domain`, for example `erp.dev.lab.example.test` |
+| `REPLACE_ME_DOMAIN` | that environment's `dns_domain`, and nothing wider. It is the only thing stopping this controller from touching the rest of the zone |
+| `REPLACE_ME_DNS_PROJECT` | the project holding the zone, `dns_project` in the stack's variables |
+| `REPLACE_ME_CLUSTER_ID` | the environment's `cluster`. It has to be unique per cluster, because it is how two clusters sharing a zone tell their records apart |
+| `REPLACE_ME_SECURITY_POLICY` | the environment's `security_policy` |
+| `REPLACE_ME_EMAIL` | an address you read. The certificate authority writes to it before a certificate expires, and it is the only warning you get |
+
+The service account annotation in `external-dns.yaml` is already the identity
+the stack creates, so it needs the project substituted and nothing else.
+
+Substituting by hand is fine for one environment and is the wrong answer for
+two. Whatever templating the rest of an estate already uses belongs here; this
+repository does not pick one, because that choice belongs to the estate rather
+than to the pattern.
+
 ## The ordering problem, which is the whole reason for the DNS challenge
 
 The obvious way to prove control of a name is to answer a request on it. That
