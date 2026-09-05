@@ -78,3 +78,11 @@ variable "acme_email" {
   EOT
   type        = string
 }
+
+variable "dns_parent_zone" {
+  description = <<-EOT
+    Name of the managed zone that owns the domain, in dns_project. The
+    per-environment zones are delegated from it.
+  EOT
+  type        = string
+}

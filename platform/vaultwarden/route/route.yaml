@@ -1,0 +1,51 @@
+# What makes n8n reachable. Applied with the workload, not with the edge.
+#
+# Only the editor is exposed. The webhook service answers unauthenticated
+# requests by design and belongs behind a different door, which is why it is
+# not routed here.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  parentRefs:
+    - name: edge
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - REPLACE_ME_HOST
+  rules:
+    - backendRefs:
+        - name: vaultwarden
+          port: 80
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: 80
+        requestPath: /alive
+  targetRef:
+    group: ""
+    kind: Service
+    name: vaultwarden
+---
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  default:
+    securityPolicy: REPLACE_ME_SECURITY_POLICY
+  targetRef:
+    group: ""
+    kind: Service
+    name: vaultwarden

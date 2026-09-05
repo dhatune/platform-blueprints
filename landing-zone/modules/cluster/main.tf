@@ -76,6 +76,7 @@ resource "google_container_cluster" "this" {
   depends_on = [google_project_iam_member.host_agent]
 }
 
+# Interruptible capacity for everything whose restart is free.
 resource "google_container_node_pool" "this" {
   provider = google-beta
 
@@ -100,6 +101,50 @@ resource "google_container_node_pool" "this" {
     # Enabling the pool without this leaves Workload Identity configured on the
     # cluster and not working on the nodes, which fails as a timeout rather
     # than as a permission error.
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+  }
+}
+
+# Capacity for workloads that must not be evicted.
+#
+# ADR 8: being restartable and being interruptible are different properties.
+# A workload with no local state restarts safely, and that says nothing about
+# what happens when it is evicted halfway through work it has already recorded
+# as started.
+#
+# The pool is labelled and tainted rather than merely labelled. A label alone
+# lets anything land here that did not ask not to, which fills the expensive
+# nodes with work that belongs on the cheap ones.
+resource "google_container_node_pool" "stateful" {
+  provider = google-beta
+  count    = var.stateful_node_count > 0 ? 1 : 0
+
+  name     = "stateful"
+  project  = var.project_id
+  location = var.location
+  cluster  = google_container_cluster.this.name
+
+  node_count = var.stateful_node_count
+
+  node_config {
+    machine_type = var.stateful_machine_type
+    disk_size_gb = var.disk_size_gb
+    spot         = false
+
+    labels = {
+      "node-role" = "stateful"
+    }
+
+    taint {
+      key    = "workload"
+      value  = "stateful"
+      effect = "NO_SCHEDULE"
+    }
+
+    oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+
     workload_metadata_config {
       mode = "GKE_METADATA"
     }

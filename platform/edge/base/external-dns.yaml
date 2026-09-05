@@ -21,7 +21,11 @@ kind: ClusterRole
 metadata: { name: external-dns }
 rules:
   - apiGroups: [""]
-    resources: ["services", "endpoints", "pods", "nodes"]
+    # Namespaces are on this list because routes attach to a gateway in another
+    # one, and resolving that means reading them. Without it the controller
+    # starts, connects, and dies a minute later saying it could not sync
+    # namespaces, which reads like a network fault rather than a permission.
+    resources: ["services", "endpoints", "pods", "nodes", "namespaces"]
     verbs: ["get", "watch", "list"]
   - apiGroups: ["extensions", "networking.k8s.io"]
     resources: ["ingresses"]

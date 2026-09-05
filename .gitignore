@@ -62,3 +62,6 @@ build/
 # that rule is not weakened here.
 landing-zone/modules/*/.terraform.lock.hcl
 platform/*/dns/.terraform.lock.hcl
+platform/*/overlays/*/vaultwarden.env
+platform/*/overlays/*/images.yaml
+platform/*/overlays/*/images-postgres.yaml

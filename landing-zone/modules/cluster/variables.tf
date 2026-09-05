@@ -83,3 +83,18 @@ variable "monitoring_components" {
   type        = list(string)
   default     = ["SYSTEM_COMPONENTS"]
 }
+
+variable "stateful_node_count" {
+  description = <<-EOT
+    Nodes in the non-interruptible pool, for workloads that must not be
+    evicted. Zero disables the pool entirely.
+  EOT
+  type        = number
+  default     = 1
+}
+
+variable "stateful_machine_type" {
+  description = "Machine type for the non-interruptible pool."
+  type        = string
+  default     = "e2-standard-4"
+}

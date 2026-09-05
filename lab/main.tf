@@ -276,3 +276,39 @@ resource "google_service_account_iam_member" "dns_workload_identity" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${module.app[each.value.env].project_id}.svc.id.goog[${each.value.sa}]"
 }
+
+# A zone per environment, delegated from the one that owns the domain.
+#
+# ADR 26 named this as the better answer and did not take it, because it needs
+# control of the parent zone's delegation and that is often somebody else's.
+# Here it is ours, so it is taken.
+#
+# What it buys is not a smaller permission, it is a smaller blast radius. The
+# controller writes into a zone that contains nothing but this lab, so the
+# question of what it might do to the organization's mail records stops being
+# a question rather than being mitigated.
+#
+# It also fixes a failure that reads like a permission problem and is not: a
+# domain filter narrower than the zone matches no zone at all, and the
+# controller logs "no matching zone" while holding every permission it needs.
+resource "google_dns_managed_zone" "environment" {
+  for_each = local.environments
+
+  project     = var.dns_project
+  name        = "${local.prefix}-${each.key}"
+  dns_name    = "${each.value.dns_domain}."
+  description = "Names published by the ${each.key} cluster. Managed by a controller."
+}
+
+# The delegation. Without it the zone exists and nothing on the internet knows
+# to ask it anything.
+resource "google_dns_record_set" "delegation" {
+  for_each = local.environments
+
+  project      = var.dns_project
+  managed_zone = var.dns_parent_zone
+  name         = "${each.value.dns_domain}."
+  type         = "NS"
+  ttl          = 300
+  rrdatas      = google_dns_managed_zone.environment[each.key].name_servers
+}
