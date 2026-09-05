@@ -52,9 +52,16 @@ dbPort: 3306
 # holds the map of asset filenames, which is why it has to be restarted after
 # an image change and not merely flushed from the application. Bundled here
 # because losing it costs a restart rather than data.
-redis-cache:
+# The chart moved off Redis to a fork of it, so these keys are named for the
+# component the chart actually deploys. This is worth checking rather than
+# copying: values a chart no longer recognises are ignored in silence, so the
+# file reads as configuration and is decoration. Nothing warns you.
+#
+# Pin the chart version for the same reason. Without a pin, an upgrade can
+# rename a key and the setting stops applying without any diff to notice.
+valkey-cache:
   enabled: true
-redis-queue:
+valkey-queue:
   enabled: true
 
 jobs:

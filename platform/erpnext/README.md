@@ -127,7 +127,38 @@ is a stronger statement than a strong password: it means an unauthenticated
 request never arrives, so a flaw in the application's own login cannot be
 reached by a stranger. ADR 16 and ADR 19 cover both sides.
 
-## Status
+## What was verified
 
-In progress. The Helm values and the decisions are here; this has not been
-deployed from this repository, and that will be said plainly when it is.
+Deployed to a cluster on a shared network, exercised, and torn down. The bench
+came up, a site was created, and the application answered its own interface
+over HTTPS from the internet with a valid certificate, behind a managed
+application firewall that refused an injection while ordinary traffic passed.
+
+The storage underneath it was the in-cluster server described above, providing
+the shared volume every process here writes to. None of the platform's own
+storage classes offer that, which is the reason it exists.
+
+Four things surfaced only by running it.
+
+**The workers restart before the bench is configured.** The job that writes
+where the cache and queue live runs alongside them rather than before them, so
+the workers start, fail to reach a service on an address that has not been
+written yet, and exit. The end state is correct and the restarts are recorded
+as errors, which is indistinguishable from a real crash to anything watching.
+
+**The health check has to be told which host to claim.** It probes the pod
+directly and sends no host header, so an application that routes by hostname
+does not recognise the request and answers 404. The check fails, the backend is
+marked unhealthy, and every request returns 503 while the application is
+running perfectly.
+
+**The administrative password cannot be retrieved**, only replaced. And it is
+nonetheless recoverable from the deployment tool's own release history, in
+clear, by anyone who can read secrets in that namespace.
+
+**Values the chart no longer recognises are ignored silently.** The file named
+keys for a component the chart has since replaced, and nothing reported it.
+
+What this does not cover: a single instance on one node, with no backup for the
+database and no second site. The bench argument above is reasoned rather than
+demonstrated, since only one site was created.
