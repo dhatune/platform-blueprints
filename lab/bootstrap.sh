@@ -337,11 +337,17 @@ ERP_HOST="erp.${DOMAIN}"
 #
 # Creating the secret first fixes both: the chart never holds the value, and a
 # second run finds what the first one made.
-# The name is ours rather than the one the chart would generate. Helm refuses
-# to adopt an object it did not create, so a secret sharing the templated name
-# blocks the install with a message about ownership metadata rather than about
-# the name.
-ensure_secret erp erp-db-credentials \
+# The name is the one the chart would have generated, and it has to be.
+#
+# Two things read this secret and only one of them can be told where to look.
+# The database subchart takes an existingSecret and will use any name. The job
+# that creates the site builds the name from the release instead, so a secret
+# called anything else leaves that job waiting for one that does not exist,
+# reported as a container configuration error rather than as a missing value.
+#
+# Creating it under the expected name is safe because existingSecret stops the
+# chart from templating its own, so there is nothing for Helm to collide with.
+ensure_secret erp erp-mariadb-subchart \
   --from-literal=mariadb-root-password="$(openssl rand -hex 24)" \
   --from-literal=mariadb-password="$(openssl rand -hex 24)" \
   --from-literal=mariadb-replication-password="$(openssl rand -hex 24)"
@@ -352,8 +358,6 @@ ensure_secret erp erp-db-credentials \
 # never used.
 ensure_secret erp erp-site-admin \
   --from-literal=password="$(openssl rand -hex 12)"
-
-ERP_ADMIN="$(kubectl -n erp get secret erp-site-admin -o jsonpath='{.data.password}' | base64 -d)"
 
 # Whether the site already exists decides whether the creation job should run
 # at all. Asking for it again on a bench that has it is a job that fails and
@@ -376,11 +380,12 @@ helm upgrade --install erp frappe/erpnext \
   --set "image.repository=${REGISTRY}/apps/erpnext" \
   --set "image.tag=${ERP_TAG}" \
   --set "mariadb.enabled=true" \
-  --set "mariadb-subchart.auth.existingSecret=erp-db-credentials" \
+  --set "mariadb-subchart.auth.existingSecret=erp-mariadb-subchart" \
   --set "dbHost=erp-mariadb" \
   --set "jobs.createSite.enabled=${CREATE_SITE}" \
   --set "jobs.createSite.siteName=${ERP_HOST}" \
-  --set "jobs.createSite.adminPassword=${ERP_ADMIN}" \
+  --set "jobs.createSite.adminExistingSecret=erp-site-admin" \
+  --set "jobs.createSite.adminExistingSecretKey=password" \
   --timeout 20m --wait=false >/dev/null
 retry 3 "erpnext manifests" kubectl apply -k "${HERE}/../platform/erpnext/overlays/${ENV}"
 
