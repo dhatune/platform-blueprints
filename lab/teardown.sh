@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 #
-# Takes an environment down in an order that works.
+# Takes one environment down, in an order that works, without touching the other.
 #
-# `terraform destroy` on its own does not, and the reason is not a bug in it.
-# Two of the things that have to go were not created by Terraform: the load
-# balancer and its backend services are built by a controller inside the
-# cluster when a Gateway appears, and they hold a reference to the application
-# firewall. Terraform tries to delete the firewall, the platform refuses
-# because something still uses it, and the destroy stops with a resource still
-# standing and a bill still running.
+# Two things make this more than a single command.
 #
-# So the workloads come down first, the platform is given time to release what
-# it built for them, and only then does the stack go.
+# The load balancer and its backend services are built by a controller inside
+# the cluster when a Gateway appears, not by Terraform, and they hold a
+# reference to the application firewall. Terraform deletes the firewall, the
+# platform refuses because something still uses it, and the destroy stops with
+# resources standing and a bill running. So the workloads come down first and
+# the platform is given time to release what it built for them.
+#
+# And `terraform destroy` is not scoped to an environment. It destroys
+# everything in the state, so asking to take down one environment would take
+# the other with it. The stack already says an environment exists because it is
+# named in enabled_environments, so it stops existing by not being named, which
+# is an ordinary apply.
 #
 # Usage: ./teardown.sh dev
 
@@ -19,6 +23,7 @@ set -euo pipefail
 
 ENV="${1:?usage: teardown.sh <environment>}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+TFVARS="${HERE}/terraform.tfvars"
 
 read_output() {
   terraform -chdir="$HERE" output -json environments 2>/dev/null \
@@ -35,36 +40,57 @@ if [ -z "$PROJECT" ]; then
 fi
 
 if gcloud container clusters describe "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1; then
-  echo "==> Removing the entry point"
+  echo "==> Removing the entry point in ${ENV}"
   gcloud container clusters get-credentials "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1
 
   # Deleting the Gateway is what tells the platform to tear down the load
   # balancer. Deleting the cluster instead leaves the balancer behind for a
   # while, which is how the firewall ends up still in use.
-  kubectl delete gateway --all -n gateway --ignore-not-found --timeout=5m || true
   kubectl delete httproute --all -A --ignore-not-found --timeout=5m || true
+  kubectl delete gateway --all -n gateway --ignore-not-found --timeout=5m || true
 
   echo "==> Waiting for the load balancer to be released"
-  # It is torn down asynchronously. Proceeding while a backend service still
-  # exists puts us back where we started.
-  for attempt in $(seq 1 30); do
+  # It is torn down asynchronously, and a namespace holding a route waits on
+  # the same thing: its endpoint groups carry a finalizer the platform removes
+  # only after the backend service is gone. Proceeding early puts us back where
+  # we started.
+  for attempt in $(seq 1 45); do
     remaining="$(gcloud compute backend-services list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
     if [ "$remaining" = "0" ]; then
       echo "    released"
       break
     fi
-    echo "    ${remaining} backend service(s) still standing (${attempt}/30)"
+    echo "    ${remaining} backend service(s) still standing (${attempt}/45)"
     sleep 20
   done
 else
-  echo "==> No cluster; going straight to the stack"
+  echo "==> No cluster in ${ENV}; going straight to the stack"
 fi
 
-echo "==> Destroying the stack"
-# The DNS zone removes its own records on the way out, which it has to: the
-# publisher cannot delete them and a zone holding records cannot be deleted.
-terraform -chdir="$HERE" destroy -auto-approve
+# Which environments survive this.
+CURRENT="$(grep -oE 'enabled_environments[[:space:]]*=[[:space:]]*\[[^]]*\]' "$TFVARS" \
+  | sed 's/.*\[//; s/\]//; s/"//g; s/ //g')"
+
+REMAINING=""
+OLD_IFS="$IFS"
+IFS=','
+for candidate in $CURRENT; do
+  [ "$candidate" = "$ENV" ] && continue
+  REMAINING="${REMAINING:+${REMAINING},}\"${candidate}\""
+done
+IFS="$OLD_IFS"
+
+if [ -z "$REMAINING" ]; then
+  echo "==> ${ENV} is the last environment; the whole stack goes"
+  # The DNS zones remove their own records on the way out, which they have to:
+  # the publisher cannot delete them and a zone holding records cannot be
+  # deleted.
+  terraform -chdir="$HERE" destroy -auto-approve
+else
+  echo "==> Removing ${ENV}, keeping ${REMAINING}"
+  terraform -chdir="$HERE" apply -auto-approve -var "enabled_environments=[${REMAINING}]"
+fi
 
 echo
 echo "Down. Check that nothing is still billing:"
-echo "  gcloud projects list --filter='projectId:${PROJECT%-*}-*'"
+echo "  gcloud projects list --filter='projectId:pb-*'"
