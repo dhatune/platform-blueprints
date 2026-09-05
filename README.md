@@ -233,7 +233,7 @@ development and production, and neither is a production environment;
 [what that would take](docs/from-the-lab-to-production.md) is written down
 rather than left to be discovered.
 
-**`docs/decisions`**: twenty-seven decisions, each with what was rejected and what
+**`docs/decisions`**: twenty-nine decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 
 **`.github/workflows`**: checks that run without credentials, which is exactly
@@ -297,6 +297,8 @@ short, dated, and state what was rejected as well as what was chosen.
 25. [Control of a name is proven by writing DNS, not by answering on it](docs/decisions/0025-control-of-a-name-is-proven-by-writing-dns.md)
 26. [A controller writing into a shared zone may never delete](docs/decisions/0026-a-controller-writing-into-a-shared-zone-may-never-delete.md)
 27. [The edge belongs to the platform, not to the chart](docs/decisions/0027-the-edge-belongs-to-the-platform-not-to-the-chart.md)
+28. [Production refuses to be destroyed; development does not](docs/decisions/0028-production-refuses-to-be-destroyed.md)
+29. [What has to survive a rebuild, and what has to be thrown away](docs/decisions/0029-what-has-to-survive-a-rebuild.md)
 
 ---
 
