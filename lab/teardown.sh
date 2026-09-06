@@ -62,47 +62,75 @@ if [ "$ENV" != "dev" ] && [ "$POLICY" = "PREVENT" ]; then
 Everything else would be destroyed first and the project would survive, still
 billing, which is the shape of the failure rather than a safe refusal.
 
-To allow it, set this in ${TFVARS} and commit the change:
+There are two ways to allow it and they are not equivalent.
 
-  production_deletion_policy = "DELETE"
+Change the default in lab/variables.tf, which is in version control, so the
+decision has an author, a date and a reviewer:
 
-That is deliberately a commit rather than a prompt, so the decision has an
-author and a date. ADR 28.
+  variable "production_deletion_policy" { default = "DELETE" }
+
+Or set it in ${TFVARS}, which is not in version control and leaves no record
+of who decided. That is the right answer for a lab being rebuilt hourly and
+the wrong one for anything whose destruction should be explainable later.
+
+ADR 28.
 MSG
   exit 1
 fi
 
 if gcloud container clusters describe "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1; then
-  echo "==> Removing the entry point in ${ENV}"
   gcloud container clusters get-credentials "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1
 
-  # Deleting the Gateway is what tells the platform to tear down the load
-  # balancer. Deleting the cluster instead leaves the balancer behind for a
-  # while, which is how the firewall ends up still in use.
-  kubectl delete httproute --all -A --ignore-not-found --timeout=5m || true
-  kubectl delete gateway --all -n gateway --ignore-not-found --timeout=5m || true
-
-  echo "==> Waiting for the load balancer to be released"
-  # Two things have to go, in this order, and waiting for the first is not
-  # enough. The backend services disappear first; the endpoint groups they
-  # pointed at are removed afterwards by a controller running in the cluster.
+  # The cluster is destroyed before the sweep, always, and that ordering is the
+  # whole lesson of this script.
   #
-  # Waiting only for the backend services lets the destroy proceed while the
-  # groups still exist. The cluster is then deleted, taking with it the only
-  # thing that would have removed them, and they are left behind attached to
-  # the shared network. The destroy fails at the very last step, detaching the
-  # project, with a message naming a network endpoint group and nothing about
-  # why it is still there.
-  for attempt in $(seq 1 60); do
-    bs="$(gcloud compute backend-services list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
-    neg="$(gcloud compute network-endpoint-groups list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
-    if [ "$bs" = "0" ] && [ "$neg" = "0" ]; then
-      echo "    released"
-      break
-    fi
-    echo "    ${bs} backend service(s), ${neg} endpoint group(s) still standing (${attempt}/60)"
-    sleep 20
+  # The endpoint groups the load balancer used are reconciled by a controller
+  # that keeps recreating them from the control plane. Deleting them by hand
+  # appears to work and they are back within a minute, so there is no waiting
+  # them out and no deleting them while the cluster exists. And leaving them
+  # fails the destroy at its last step, because a project cannot be detached
+  # from a shared network while an endpoint group in it is still attached.
+  #
+  # Whether the cluster answers changes only how gracefully the load balancer
+  # goes, not this order. A cluster in a failed state answers well enough to
+  # accept a deletion and not well enough to act on it.
+  if kubectl version --request-timeout=15s >/dev/null 2>&1; then
+    echo "==> Removing the entry point in ${ENV}"
+    kubectl delete httproute --all -A --ignore-not-found --timeout=3m || true
+    kubectl delete gateway --all -n gateway --ignore-not-found --timeout=3m || true
+
+    echo "==> Waiting for the backend services to go"
+    # These do get released, and the application firewall cannot be deleted
+    # while one of them still points at it.
+    for attempt in $(seq 1 30); do
+      bs="$(gcloud compute backend-services list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
+      [ "$bs" = "0" ] && { echo "    released"; break; }
+      echo "    ${bs} still standing (${attempt}/30)"
+      sleep 20
+    done
+  else
+    echo "==> The cluster does not answer; going straight to removing it"
+  fi
+
+  echo "==> Removing the cluster"
+  terraform -chdir="$HERE" destroy -auto-approve \
+    -target="module.cluster[\"${ENV}\"]"
+
+  echo "==> Sweeping what the cluster left behind"
+  # Now nothing recreates them, so a delete sticks. On a healthy teardown this
+  # finds nothing, which is the point: it is a sweep, not a step.
+  for pass in 1 2 3; do
+    leftover="$(gcloud compute network-endpoint-groups list --project="$PROJECT" --format='value(name,zone.basename())' 2>/dev/null)"
+    [ -z "$leftover" ] && { echo "    nothing left"; break; }
+    echo "$leftover" | while read -r neg_name neg_zone; do
+      [ -z "$neg_name" ] && continue
+      gcloud compute network-endpoint-groups delete "$neg_name" \
+        --zone="$neg_zone" --project="$PROJECT" --quiet >/dev/null 2>&1 \
+        && echo "    removed ${neg_name}"
+    done
+    sleep 10
   done
+
 else
   echo "==> No cluster in ${ENV}; going straight to the stack"
 fi
