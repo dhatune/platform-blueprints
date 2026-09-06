@@ -39,6 +39,39 @@ if [ -z "$PROJECT" ]; then
   exit 0
 fi
 
+# Refuse before destroying anything, not after.
+#
+# The projects carry a deletion policy that can refuse. Discovering that at the
+# end is the worst possible order: everything else is already gone, the project
+# survives, and whatever is still inside it keeps billing while the operator
+# reads an error about a policy they did not know existed.
+#
+# So the question is asked first, and the answer stops this before it starts.
+# The trailing `|| true` is not decoration. Under `set -e` a grep that matches
+# nothing fails the assignment and takes the script with it, exiting non-zero
+# with nothing printed, which is indistinguishable from the refusal below. The
+# absent case is the common one: the value is only written down when somebody
+# has decided to allow a teardown.
+POLICY="$(grep -oE 'production_deletion_policy[[:space:]]*=[[:space:]]*"[A-Z]+"' "$TFVARS" 2>/dev/null | grep -oE '[A-Z]+"$' | tr -d '"' || true)"
+POLICY="${POLICY:-PREVENT}"
+
+if [ "$ENV" != "dev" ] && [ "$POLICY" = "PREVENT" ]; then
+  cat >&2 <<MSG
+'${ENV}' is protected and this would stop halfway.
+
+Everything else would be destroyed first and the project would survive, still
+billing, which is the shape of the failure rather than a safe refusal.
+
+To allow it, set this in ${TFVARS} and commit the change:
+
+  production_deletion_policy = "DELETE"
+
+That is deliberately a commit rather than a prompt, so the decision has an
+author and a date. ADR 28.
+MSG
+  exit 1
+fi
+
 if gcloud container clusters describe "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1; then
   echo "==> Removing the entry point in ${ENV}"
   gcloud container clusters get-credentials "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1
@@ -99,5 +132,25 @@ else
 fi
 
 echo
-echo "Down. Check that nothing is still billing:"
-echo "  gcloud projects list --filter='projectId:pb-*'"
+echo "==> What is left"
+# A teardown that reports success while a project still bills is the failure
+# this section exists to avoid, so it is checked rather than assumed.
+LEFT=0
+for project in $(gcloud projects list --filter='projectId:pb-*' --format='value(projectId)' 2>/dev/null); do
+  billing="$(gcloud billing projects describe "$project" --format='value(billingEnabled)' 2>/dev/null)"
+  if [ "$billing" = "True" ]; then
+    echo "    ${project}: still billing"
+    LEFT=$((LEFT + 1))
+  else
+    echo "    ${project}: billing off"
+  fi
+done
+
+if [ "$LEFT" -gt 0 ]; then
+  echo
+  echo "${LEFT} project(s) survived with billing on. Either they are protected," >&2
+  echo "in which case see ADR 28, or something in them refused to go." >&2
+  exit 1
+fi
+
+echo "    nothing left"

@@ -86,3 +86,24 @@ variable "dns_parent_zone" {
   EOT
   type        = string
 }
+
+variable "production_deletion_policy" {
+  description = <<-EOT
+    Whether production refuses to be destroyed. ADR 28.
+
+    PREVENT is the answer for anything holding something that cannot be rebuilt
+    from this repository. Changing it to DELETE is how a teardown is allowed,
+    and it is a commit rather than a prompt so that the decision has an author
+    and a date.
+
+    It also governs the shared project and the folders, because an environment
+    that cannot be removed leaves them behind with nothing in them.
+  EOT
+  type        = string
+  default     = "PREVENT"
+
+  validation {
+    condition     = contains(["PREVENT", "DELETE"], var.production_deletion_policy)
+    error_message = "Must be PREVENT or DELETE."
+  }
+}
