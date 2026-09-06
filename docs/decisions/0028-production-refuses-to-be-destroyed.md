@@ -25,6 +25,18 @@ The thing that makes production different is not that it is more important in
 some abstract way. It is that its contents cannot be reconstructed from this
 repository. A cluster can. The data somebody put in it cannot.
 
+There is a guard already, and finding it is what makes this a decision rather
+than a proposal. The project resource takes a deletion policy, its default
+refuses destruction, and the stack does not pass a value, so both environments
+inherit the same refusal. It was discovered the way these things are: a
+teardown of development destroyed the network, the services and the shared
+network attachment, and then stopped on the project itself.
+
+Inheriting it is not the same as choosing it. A guard nobody selected is one
+nobody can explain, and the first person who needs to tear down development
+will remove it in the place that covers both environments, because that is
+where it is written.
+
 ## Decision
 
 Deletion protection is asymmetric.
@@ -62,6 +74,19 @@ mistake.
 **Require a typed confirmation at the prompt.** Better than nothing, and it is
 answered by whoever is already committed to the action, in the same minute,
 with no witness. A commit is slower on purpose and someone else can see it.
+
+## What this means concretely
+
+The value exists and is not passed. Production should pass the refusing value
+explicitly, so that it is a decision with a reason beside it rather than a
+default nobody read. Development should pass the permitting one, so that
+tearing it down is ordinary and nobody learns to reach for the setting that
+covers both.
+
+This is deliberately not implemented here. The decision is worth recording
+before the change, because the change is one line and the reasoning is the part
+that will be needed in six months when somebody wonders why the two
+environments differ.
 
 ## Consequences
 
