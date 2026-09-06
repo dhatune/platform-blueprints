@@ -77,16 +77,47 @@ with no witness. A commit is slower on purpose and someone else can see it.
 
 ## What this means concretely
 
-The value exists and is not passed. Production should pass the refusing value
-explicitly, so that it is a decision with a reason beside it rather than a
-default nobody read. Development should pass the permitting one, so that
-tearing it down is ordinary and nobody learns to reach for the setting that
-covers both.
+Production states the refusing value explicitly rather than inheriting it, and
+development states the permitting one, so that tearing development down is
+ordinary and nobody learns to reach for the setting that covers both.
 
-This is deliberately not implemented here. The decision is worth recording
-before the change, because the change is one line and the reasoning is the part
-that will be needed in six months when somebody wonders why the two
-environments differ.
+There is a hole in the "it is a commit" claim, found while writing the refusal
+message. The variables file holding the real values is deliberately not in
+version control, so setting the override there leaves no record of who decided
+or when: it is a local act wearing the clothes of a reviewed one. Only the
+default, which is in version control, has the property this decision is built
+on.
+
+Both paths are offered and the difference is stated where somebody will read
+it, at the moment of being refused. That is weaker than only allowing the
+reviewable one, and it is honest about which is which. Closing it properly
+means the refusal reads the committed default rather than any override, which
+also removes the ability to allow a teardown without a reviewer, and that is a
+trade this repository has not made yet.
+
+## The part that is not obvious
+
+The policy is read from the state, not from the configuration.
+
+Changing the value and running a destroy does nothing: the destroy asks the
+provider to delete a resource, and the provider reads the policy recorded when
+that resource was last written. So allowing a teardown is two steps, an apply
+and then a destroy, and skipping the first produces a destroy that removes
+every other resource and then refuses on the projects.
+
+That is exactly the failure this decision was written to prevent, arriving
+through the mechanism meant to prevent it. It cost a manual billing removal to
+stop the charge on projects that survived their own teardown.
+
+Worse, an environment removed from the configuration keeps the policy it was
+created with, and there is no configuration left to change. The only ways out
+are to name it again long enough to write the new value, or to remove it from
+the state and delete it by hand.
+
+The teardown script does the apply before the destroy for this reason. Anyone
+running the commands directly has to know the order, which is why it is written
+here rather than left to be discovered at the point where the discovery is
+expensive.
 
 ## Consequences
 

@@ -109,6 +109,22 @@ the key destroys the data.
 placeholders that exist only because the deployment refuses to start without
 them. Invitations and password resets fail.
 
+## The one that cost real money
+
+**A deletion policy is read from the state, not the configuration.** Changing
+it and running a destroy removes everything except the projects and then
+refuses on them, leaving them alive and billing. Allowing a teardown is an
+apply and then a destroy, in that order, and nothing about the error message
+says so.
+
+**An unreachable cluster keeps recreating what its teardown removes.** The
+endpoint groups the load balancer used are reconciled from the control plane,
+so deleting them by hand appears to work and they are back within a minute.
+There is no waiting them out. The cluster has to be destroyed first, and only
+then do they stay deleted. A cluster in a failed state answers well enough to
+accept a deletion and not well enough to act on it, so testing whether it
+answers is not the same as testing whether it works.
+
 ## Process, which is the one people skip
 
 **Applies happen from a laptop.** `docs/git-flow.md` says infrastructure is
