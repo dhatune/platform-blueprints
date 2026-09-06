@@ -34,9 +34,32 @@ PROJECT="$(read_output project)"
 CLUSTER="$(read_output cluster)"
 ZONE="$(read_output zone)"
 
-if [ -z "$PROJECT" ]; then
-  echo "The stack has no environment '${ENV}'. Nothing to take down."
+# The outputs describe an environment that is fully built. A teardown that
+# stopped partway leaves resources in the state and no outputs at all, because
+# the outputs are computed from modules that no longer have anything in them.
+#
+# Reading only the outputs makes the script refuse to finish what it started,
+# reporting that there is nothing to take down while seven resources and three
+# projects are still standing. So the state is the second opinion, and it is
+# the one that decides whether there is work left.
+STATE_COUNT="$(terraform -chdir="$HERE" state list 2>/dev/null | wc -l | tr -d ' ')"
+
+# The prefix every project in this stack shares, taken from the variables file
+# so that the final check looks for what this stack made rather than for
+# anything that happens to look like it.
+PROJECT_PREFIX="pb-$(grep -oE 'suffix[[:space:]]*=[[:space:]]*"[^"]+"' "$TFVARS" 2>/dev/null | grep -oE '"[^"]+"$' | tr -d '"' || true)"
+
+if [ -z "$PROJECT" ] && [ "$STATE_COUNT" = "0" ]; then
+  echo "The stack has no environment '${ENV}' and nothing in its state."
   exit 0
+fi
+
+if [ -z "$PROJECT" ]; then
+  echo "==> No outputs for '${ENV}', but ${STATE_COUNT} resource(s) remain"
+  echo "    a previous teardown stopped partway; finishing from the state"
+  PARTIAL=true
+else
+  PARTIAL=false
 fi
 
 # Refuse before destroying anything, not after.
@@ -78,7 +101,7 @@ MSG
   exit 1
 fi
 
-if gcloud container clusters describe "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1; then
+if [ "$PARTIAL" = "false" ] && gcloud container clusters describe "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1; then
   gcloud container clusters get-credentials "$CLUSTER" --zone "$ZONE" --project "$PROJECT" >/dev/null 2>&1
 
   # The cluster is destroyed before the sweep, always, and that ordering is the
@@ -187,7 +210,7 @@ echo "==> What is left"
 # A teardown that reports success while a project still bills is the failure
 # this section exists to avoid, so it is checked rather than assumed.
 LEFT=0
-for project in $(gcloud projects list --filter='projectId:pb-*' --format='value(projectId)' 2>/dev/null); do
+for project in $(gcloud projects list --filter="projectId:${PROJECT_PREFIX}*" --format='value(projectId)' 2>/dev/null); do
   billing="$(gcloud billing projects describe "$project" --format='value(billingEnabled)' 2>/dev/null)"
   if [ "$billing" = "True" ]; then
     echo "    ${project}: still billing"
