@@ -376,14 +376,17 @@ resource "google_dns_record_set" "delegation" {
 # The account is created by enabling the API, so this binding is made against a
 # name that exists only after that has happened. Making it before produces a
 # failure that names a principal nobody wrote.
-data "google_project" "host" {
-  project_id = module.host_project.project_id
-}
-
 resource "google_project_iam_member" "build_writes_images" {
   project = module.host_project.project_id
   role    = "roles/artifactregistry.writer"
-  member  = "serviceAccount:${data.google_project.host.number}@cloudbuild.gserviceaccount.com"
 
-  depends_on = [module.host_project]
+  # The number comes from the module that creates the project rather than from
+  # a data source reading it back.
+  #
+  # A data source is resolved during planning, and on a build from nothing the
+  # project does not exist yet, so the plan fails with a permission error
+  # naming a project nobody has created. It worked for as long as it was added
+  # to an estate that already existed, which is the shape of a defect that only
+  # a clean build finds.
+  member = "serviceAccount:${module.host_project.project_number}@cloudbuild.gserviceaccount.com"
 }
