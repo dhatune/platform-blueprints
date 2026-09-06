@@ -45,12 +45,27 @@ locals {
       pod_cidr    = "10.21.0.0/16"
       svc_cidr    = "10.22.0.0/20"
       dns_domain  = "dev.${var.dns_domain}"
+
+      # Development is meant to be rebuilt, so it can be destroyed. ADR 28.
+      # Friction here buys nothing and costs a habit: an operator who has to
+      # disable a guard weekly stops reading it.
+      deletion_policy = "DELETE"
     }
     prod = {
       subnet_cidr = "10.10.0.0/20"
       pod_cidr    = "10.11.0.0/16"
       svc_cidr    = "10.12.0.0/20"
       dns_domain  = "prod.${var.dns_domain}"
+
+      # Production refuses. Allowing a teardown is a commit, which is slower
+      # than a prompt on purpose and which somebody else can see.
+      #
+      # The value is stated rather than inherited. The module already defaults
+      # to refusing, so leaving it out produces the same behaviour and none of
+      # the meaning: a guard nobody selected is one nobody can explain, and the
+      # first person who needs to tear an environment down removes it in the
+      # place that covers both.
+      deletion_policy = var.production_deletion_policy
     }
   }
 
@@ -74,6 +89,10 @@ module "folders" {
   organization_id  = var.organization_id
   root_folder_name = "pb-lab-${local.suffix}"
   product_folders  = ["apps"]
+
+  # A folder that cannot be deleted outlives every lab that used it, and holds
+  # nothing worth protecting once the projects inside it are gone.
+  deletion_protection = var.production_deletion_policy == "PREVENT"
 }
 
 module "host_project" {
@@ -81,6 +100,7 @@ module "host_project" {
 
   project_id      = "${local.prefix}-host"
   display_name    = "PB Host"
+  deletion_policy = var.production_deletion_policy
   folder_id       = module.folders.shared_folder_id
   billing_account = var.billing_account
 
@@ -140,6 +160,8 @@ module "app" {
   billing_account = var.billing_account
 
   shared_vpc_host_project = module.host_project.project_id
+
+  deletion_policy = each.value.deletion_policy
 
   activate_apis = [
     "compute.googleapis.com",
