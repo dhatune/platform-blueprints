@@ -152,6 +152,24 @@ The second environment is what found most of the defects in this repository.
 Every one of them was hidden while the environment being tested was one the
 author had already repaired by hand.
 
+Taking them down found the rest, and they were the expensive ones. A deletion
+policy read from the state rather than the configuration, so that allowing a
+teardown and running one are two steps and doing only the second leaves every
+project alive and billing. Endpoint groups recreated from a control plane
+faster than they can be deleted, so that the cluster has to go first. A script
+that could not finish a teardown it had started, because it found the
+environment by reading outputs that stop existing halfway through.
+
+Both environments were eventually destroyed, and the end state is clean: no
+projects, no folders, no zones, nothing in the state, and nothing billing. It
+took five interventions to get there. A cycle that needs a person five times is
+not automated, and every one of those interventions is now a change in the
+script rather than a step in somebody's memory.
+
+What is still unproven is the whole cycle running clean in one pass, with the
+fixes in place, without a hand on it. Until that happens the claim is that each
+piece works, which is a smaller claim than it sounds.
+
 ---
 
 # The changes, concretely
