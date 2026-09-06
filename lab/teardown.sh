@@ -150,6 +150,29 @@ IFS="$OLD_IFS"
 
 if [ -z "$REMAINING" ]; then
   echo "==> ${ENV} is the last environment; the whole stack goes"
+
+  # Write the deletion policy into the state before asking anything to be
+  # deleted, because that is where the provider reads it.
+  #
+  # Changing the value in the configuration and going straight to a destroy
+  # does nothing: the destroy asks the provider to delete a resource and the
+  # provider reads the policy recorded when that resource was last written. The
+  # result is everything destroyed except the projects, which survive with
+  # billing on, and an error naming a policy nobody set today.
+  #
+  # This apply is targeted at the projects alone. An untargeted one would set
+  # about rebuilding the environment that is being taken down.
+  echo "    recording the deletion policy first"
+  PROJECT_TARGETS=""
+  for resource in $(terraform -chdir="$HERE" state list 2>/dev/null | grep 'google_project\.this$'); do
+    PROJECT_TARGETS="${PROJECT_TARGETS} -target=${resource}"
+  done
+
+  if [ -n "$PROJECT_TARGETS" ]; then
+    # shellcheck disable=SC2086
+    terraform -chdir="$HERE" apply -auto-approve $PROJECT_TARGETS >/dev/null || true
+  fi
+
   # The DNS zones remove their own records on the way out, which they have to:
   # the publisher cannot delete them and a zone holding records cannot be
   # deleted.
