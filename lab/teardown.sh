@@ -50,17 +50,24 @@ if gcloud container clusters describe "$CLUSTER" --zone "$ZONE" --project "$PROJ
   kubectl delete gateway --all -n gateway --ignore-not-found --timeout=5m || true
 
   echo "==> Waiting for the load balancer to be released"
-  # It is torn down asynchronously, and a namespace holding a route waits on
-  # the same thing: its endpoint groups carry a finalizer the platform removes
-  # only after the backend service is gone. Proceeding early puts us back where
-  # we started.
-  for attempt in $(seq 1 45); do
-    remaining="$(gcloud compute backend-services list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
-    if [ "$remaining" = "0" ]; then
+  # Two things have to go, in this order, and waiting for the first is not
+  # enough. The backend services disappear first; the endpoint groups they
+  # pointed at are removed afterwards by a controller running in the cluster.
+  #
+  # Waiting only for the backend services lets the destroy proceed while the
+  # groups still exist. The cluster is then deleted, taking with it the only
+  # thing that would have removed them, and they are left behind attached to
+  # the shared network. The destroy fails at the very last step, detaching the
+  # project, with a message naming a network endpoint group and nothing about
+  # why it is still there.
+  for attempt in $(seq 1 60); do
+    bs="$(gcloud compute backend-services list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
+    neg="$(gcloud compute network-endpoint-groups list --project="$PROJECT" --format='value(name)' 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "$bs" = "0" ] && [ "$neg" = "0" ]; then
       echo "    released"
       break
     fi
-    echo "    ${remaining} backend service(s) still standing (${attempt}/45)"
+    echo "    ${bs} backend service(s), ${neg} endpoint group(s) still standing (${attempt}/60)"
     sleep 20
   done
 else
