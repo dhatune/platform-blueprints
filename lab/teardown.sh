@@ -144,7 +144,10 @@ if [ "$PARTIAL" = "false" ] && gcloud container clusters describe "$CLUSTER" --z
   # finds nothing, which is the point: it is a sweep, not a step.
   for pass in 1 2 3; do
     leftover="$(gcloud compute network-endpoint-groups list --project="$PROJECT" --format='value(name,zone.basename())' 2>/dev/null)"
-    [ -z "$leftover" ] && { echo "    nothing left"; break; }
+    if [ -z "$leftover" ]; then
+      echo "    nothing left after ${pass} pass(es)"
+      break
+    fi
     echo "$leftover" | while read -r neg_name neg_zone; do
       [ -z "$neg_name" ] && continue
       gcloud compute network-endpoint-groups delete "$neg_name" \
