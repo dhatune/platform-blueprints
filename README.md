@@ -21,6 +21,11 @@ So every section here carries the same three things:
 - **Why it is built this way**: the decision and the alternative it beat.
 - **What it costs**: the trade-off you are accepting.
 
+And none of it is asserted from memory. The whole estate has been built,
+exercised and destroyed against a real organization three times over, by the
+scripts in [`lab/`](lab/), which are here so that you can do the same rather
+than believe the claim.
+
 ---
 
 ## How the pieces fit
@@ -193,6 +198,26 @@ The blast radius is the bench, not the site. ADR 13.
 
 → [Read it](platform/erpnext/)
 
+### `lab`
+
+The stack that verifies everything above, and the reason you do not have to
+take any of it on trust.
+
+It builds two environments that are the same set of components rather than a
+small one and a real one, installs every workload into both, and takes them
+down again. Three scripts: one that says what is missing before anything is
+created, one that goes from an empty project to a service answering on its own
+name, and one that removes an environment without touching the other.
+
+It exists because the first version of this repository described results it
+could no longer reproduce. The verification lived in a scratch directory and a
+reboot cleared it, leaving prose about an outcome and no way to check it. Most
+of the defects fixed here were found by this section, and nearly all of them
+were invisible until something was built where nothing had been, or taken down
+while something else stayed up.
+
+→ [Read it](lab/)
+
 ---
 
 ## What each part is, and is not
@@ -232,6 +257,12 @@ one script that installs everything into it. It builds two environments called
 development and production, and neither is a production environment;
 [what that would take](docs/from-the-lab-to-production.md) is written down
 rather than left to be discovered.
+
+**`lab/`**: three scripts and a Terraform stack that build two environments,
+install everything into both, and take them down. It is the part that makes the
+rest checkable. What it builds is not a production environment and
+[what that would take](docs/from-the-lab-to-production.md) is written down
+rather than left implied.
 
 **`docs/decisions`**: twenty-nine decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
