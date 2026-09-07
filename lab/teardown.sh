@@ -209,6 +209,11 @@ echo
 echo "==> What is left"
 # A teardown that reports success while a project still bills is the failure
 # this section exists to avoid, so it is checked rather than assumed.
+#
+# What counts as wrong depends on what was asked for. Removing one environment
+# while another remains is supposed to leave the other one, and its shared
+# project, running and billing. Only a teardown of the last environment should
+# end with nothing.
 LEFT=0
 for project in $(gcloud projects list --filter="projectId:${PROJECT_PREFIX}*" --format='value(projectId)' 2>/dev/null); do
   billing="$(gcloud billing projects describe "$project" --format='value(billingEnabled)' 2>/dev/null)"
@@ -219,6 +224,12 @@ for project in $(gcloud projects list --filter="projectId:${PROJECT_PREFIX}*" --
     echo "    ${project}: billing off"
   fi
 done
+
+if [ -n "$REMAINING" ]; then
+  echo
+  echo "    ${REMAINING} still stands, which is what was asked for"
+  exit 0
+fi
 
 if [ "$LEFT" -gt 0 ]; then
   echo
