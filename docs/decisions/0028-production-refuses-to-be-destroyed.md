@@ -15,11 +15,11 @@ like configuration rather than demolition, and the plan that follows is a long
 list of resources scrolling past somebody who has already decided what they are
 doing.
 
-Two near-misses in one afternoon of building this. A teardown script written to
-take one environment down called a destroy that is not scoped to anything and
-would have taken the other with it. And an edit narrowing that same list was
-made while a destroy was about to run, which would have reached past the
-environment it was aimed at. Neither was caught by reading the plan.
+Two near-misses while building this. A teardown written to take one environment
+down called a destroy that is not scoped to anything and would have taken the
+other with it. And an edit narrowing that same list was made while a destroy
+was about to run, which would have reached past the environment it was aimed
+at. Neither was caught by reading the plan.
 
 The thing that makes production different is not that it is more important in
 some abstract way. It is that its contents cannot be reconstructed from this
@@ -68,8 +68,9 @@ almost always has the right to destroy it on purpose. The failure is intent,
 not authority, and access control does not distinguish them.
 
 **Rely on the plan.** The output says precisely what will be destroyed.
-Rejected on evidence: it said so twice today and was not what stopped either
-mistake.
+Rejected on evidence rather than on principle: it said so in both of the
+near-misses above, and in neither case was it what stopped the mistake. A plan
+is read by somebody who has already decided.
 
 **Require a typed confirmation at the prompt.** Better than nothing, and it is
 answered by whoever is already committed to the action, in the same minute,

@@ -234,12 +234,11 @@ down again. Three scripts: one that says what is missing before anything is
 created, one that goes from an empty project to a service answering on its own
 name, and one that removes an environment without touching the other.
 
-It exists because the first version of this repository described results it
-could no longer reproduce. The verification lived in a scratch directory and a
-reboot cleared it, leaving prose about an outcome and no way to check it. Most
-of the defects fixed here were found by this section, and nearly all of them
-were invisible until something was built where nothing had been, or taken down
-while something else stayed up.
+It exists because a description of a result is not the result. An estate that
+cannot be stood up again from the repository is one whose claims cannot be
+checked, and the failures that matter most are the ones that only appear when
+something is built where nothing was, or taken down while something else stays
+up. Neither of those is reachable by reading.
 
 → [Read it](lab/)
 
