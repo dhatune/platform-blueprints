@@ -8,6 +8,32 @@ DNS.
 It is meant to be destroyed. Nothing here should outlive the verification it
 exists for.
 
+## What has to be true first
+
+```
+./preflight.sh
+```
+
+It checks the things whose absence produces a late and unhelpful failure, and
+says which one is missing rather than letting you find out halfway through an
+apply.
+
+**Tools.** terraform, kubectl, helm, gcloud, crane, python3, openssl and curl.
+A missing one otherwise surfaces as a command not found with an estate half
+built.
+
+**An organization and an open billing account**, and an authenticated session
+that can read both.
+
+**A public DNS zone you already own**, in a project this stack does not create,
+with the name you intend to publish under sitting beneath it. The stack makes a
+zone per environment and delegates each from that one, which is only possible
+if the parent is yours. This is the prerequisite most people do not have, and
+without it the failure arrives a minute into an apply.
+
+**A suffix nobody has used.** A destroyed project's identifier is held for
+thirty days, and reusing one produces an error that does not mention that.
+
 ## Where your own values go
 
 One file, and it is not in version control.

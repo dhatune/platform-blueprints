@@ -1,0 +1,12 @@
+# Example only. See images.yaml.example.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: n8n
+  name: postgres
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          image: example-registry.invalid/apps/postgres@sha256:0000000000000000000000000000000000000000000000000000000000000000
