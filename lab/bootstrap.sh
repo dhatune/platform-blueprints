@@ -362,11 +362,42 @@ ensure_secret erp erp-site-admin \
 # Whether the site already exists decides whether the creation job should run
 # at all. Asking for it again on a bench that has it is a job that fails and
 # stays red.
-if kubectl -n erp get job -l "app.kubernetes.io/name=erpnext" 2>/dev/null | grep -q new-site; then
+# Whether to ask for the site depends on whether one exists, not on whether a
+# job once tried.
+#
+# Asking again on a bench that has the site produces a job that fails and stays
+# red. Not asking again after a job that failed leaves a bench with no site,
+# answering 404 to everything, with nothing in the deployment looking wrong.
+# The first version of this checked only that a job had run, which is the
+# question that gets both cases wrong.
+# A directory is not a site.
+#
+# Creating one is several steps, and an interruption leaves the directory
+# there with its database settings written and its applications never
+# installed. The bench then serves that host and answers nothing useful, the
+# health check fails, and every request is a 503 while every pod is Running.
+#
+# The site's configuration records which applications are installed, and that
+# key is written last. Its absence is what distinguishes a site from the
+# wreckage of one.
+site_is_usable() {
+  kubectl -n erp exec deploy/erp-erpnext-gunicorn -- \
+    cat "sites/${ERP_HOST}/site_config.json" 2>/dev/null \
+  | grep -q '"installed_apps"'
+}
+
+if site_is_usable; then
   CREATE_SITE=false
-  echo "    a site creation job already ran; not asking for another"
+  echo "    the site exists and is usable; not asking for another"
 else
   CREATE_SITE=true
+  # A half-created site has to go before another attempt, or the creation
+  # refuses on a directory that is already there.
+  kubectl -n erp exec deploy/erp-erpnext-gunicorn -- \
+    rm -rf "sites/${ERP_HOST}" >/dev/null 2>&1 || true
+  # A failed attempt leaves a job behind, and the chart will not replace it.
+  kubectl -n erp delete job -l "app.kubernetes.io/name=erpnext" \
+    --field-selector status.successful!=1 --ignore-not-found >/dev/null 2>&1 || true
 fi
 
 # The alias mariadb.enabled exists for backward compatibility; the values the
