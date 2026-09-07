@@ -376,6 +376,19 @@ resource "google_dns_record_set" "delegation" {
 # The account is created by enabling the API, so this binding is made against a
 # name that exists only after that has happened. Making it before produces a
 # failure that names a principal nobody wrote.
+# The account the build runs as has to be asked for before it can be granted
+# anything.
+#
+# Enabling the API does not create it. It appears the first time the service is
+# used, or when it is requested explicitly as it is here, and a binding made
+# before that fails saying the account does not exist, which reads like a typo
+# in a name nobody typed.
+resource "google_project_service_identity" "cloudbuild" {
+  provider = google-beta
+  project  = module.host_project.project_id
+  service  = "cloudbuild.googleapis.com"
+}
+
 resource "google_project_iam_member" "build_writes_images" {
   project = module.host_project.project_id
   role    = "roles/artifactregistry.writer"
@@ -389,4 +402,6 @@ resource "google_project_iam_member" "build_writes_images" {
   # to an estate that already existed, which is the shape of a defect that only
   # a clean build finds.
   member = "serviceAccount:${module.host_project.project_number}@cloudbuild.gserviceaccount.com"
+
+  depends_on = [google_project_service_identity.cloudbuild]
 }
