@@ -30,48 +30,73 @@ than believe the claim.
 
 ## How the pieces fit
 
-An editable version is in [`docs/diagrams/`](docs/diagrams/). Every element
-below was applied to a real organization and then destroyed.
+Every element below was applied to a real organization and then destroyed,
+three times. The diagram here is the current one; the editable file in
+[`docs/diagrams/`](docs/diagrams/) is an earlier version and predates the
+second environment, the delegated zones and the second node pool. It is kept
+for anyone who wants a starting point to draw over, not as a description of
+what this builds.
 
 ```mermaid
 flowchart TB
-    net([Internet]) --> armor[Cloud Armor<br/>managed rules, rate limit<br/>preview before enforcing]
-    armor --> lb[Global load balancer<br/>built from a Gateway<br/>TLS terminated here]
+    net([Internet]) --> armor[Cloud Armor<br/>managed rules, rate limit<br/>one policy per environment]
+    armor --> lb[Global load balancer<br/>built from one Gateway<br/>wildcard certificate, TLS ends here]
 
     subgraph org [Organization]
         subgraph shared [Folder: shared]
             subgraph host [Host project]
-                prod[VPC prod<br/>+ pod and service ranges]
-                dev[VPC dev]
-                fw[Firewall: default deny<br/>plus health probe ranges]
-                reg[Artifact Registry]
-                sec[Secret Manager<br/>containers only, never values]
+                vprod[VPC prod<br/>+ pod and service ranges]
+                vdev[VPC dev<br/>+ pod and service ranges]
+                fw[Firewall: default deny<br/>plus health probe ranges<br/>on the ports workloads serve]
+                reg[Artifact Registry<br/>a copy, and a proxy]
+                build[Cloud Build<br/>copies images in<br/>runs inside the platform]
             end
         end
-        subgraph product [Folder: product]
-            subgraph svc [Service project]
-                gke[GKE cluster<br/>runs on the host's subnet]
-                nfs[NFS pod<br/>ReadWriteMany from one disk]
-                app[Workload]
-                ctl[external-dns · cert-manager<br/>one identity, no keys]
+
+        subgraph product [Folder: apps]
+            subgraph sprod [Service project: prod]
+                gprod[GKE cluster<br/>spot pool + non-interruptible pool]
+                nprod[NFS pod<br/>ReadWriteMany from one disk]
+                aprod[ERP · automation · password manager]
+                cprod[external-dns · cert-manager<br/>one identity, no keys]
+            end
+            subgraph sdev [Service project: dev]
+                gdev[GKE cluster<br/>same components, same shape]
             end
         end
     end
 
-    lb -. health probes .-> app
-    gke --> prod
-    app --> nfs
-    app --> reg
-    ctl --> dns[(Cloud DNS<br/>zone in a third project)]
-    ctl --> ca([Certificate authority])
+    lb -. health probes .-> aprod
+    gprod --> vprod
+    gdev --> vdev
+    build --> reg
+    aprod --> reg
+    aprod --> nprod
+    cprod --> zprod[(Zone: prod<br/>delegated)]
+    cprod --> ca([Certificate authority])
+    zprod --> parent[(Parent zone<br/>a project this does not create)]
+    zdev[(Zone: dev<br/>delegated)] --> parent
 
-    prod x-.-x dev
+    vprod x-.-x vdev
 ```
 
-The crossed line between the two networks is the point of ADR 4: they are not
-peered, so there is no route to permit or deny. The dashed probe path is what
-the default-deny firewall blocked, which took a working application and made it
-return 503 to everyone.
+Three things in the picture are decisions rather than layout.
+
+The crossed line between the networks is ADR 4: they are not peered, so there
+is no route to permit or deny. The dashed probe path is what the default-deny
+firewall blocked, which took a working application and made it answer 503 to
+everyone while every pod reported healthy.
+
+And each environment publishes into its own delegated zone rather than into the
+one that owns the domain. ADR 26 called that the better answer and did not take
+it, because it needs control of the parent's delegation. Taking it means the
+record publisher writes into a zone that holds nothing but one environment, so
+the question of what it might do to the organization's mail records stops being
+a question rather than being mitigated.
+
+Development is drawn with less inside it for space, not because it has less in
+it. Both environments run the same set of components, which is the point of
+ADR 24: an environment that runs a smaller set rehearses nothing.
 
 ## Contents
 
