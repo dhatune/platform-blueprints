@@ -1,0 +1,60 @@
+# What makes n8n reachable. Applied with the workload, not with the edge.
+#
+# Only the editor is exposed. The webhook service answers unauthenticated
+# requests by design and belongs behind a different door, which is why it is
+# not routed here.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: erp-erpnext
+  namespace: erp
+spec:
+  parentRefs:
+    - name: edge
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - REPLACE_ME_HOST
+  rules:
+    - backendRefs:
+        - name: erp-erpnext
+          port: 8080
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: erp-erpnext
+  namespace: erp
+spec:
+  default:
+    config:
+      type: HTTP
+      httpHealthCheck:
+        port: 8080
+        requestPath: /api/method/ping
+        # Required, and the reason is not obvious.
+        #
+        # The probe reaches the pod directly and sends no Host header by
+        # default. This application routes by hostname, does not recognize the
+        # request, and answers 404. The backend is marked unhealthy and every
+        # request returns 503 while the application is running perfectly. The
+        # application logs a 404 from an internal address and the user sees a
+        # 503, and nothing in either message says health check.
+        host: REPLACE_ME_HOST
+  targetRef:
+    group: ""
+    kind: Service
+    name: erp-erpnext
+---
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: erp-erpnext
+  namespace: erp
+spec:
+  default:
+    securityPolicy: REPLACE_ME_SECURITY_POLICY
+  targetRef:
+    group: ""
+    kind: Service
+    name: erp-erpnext

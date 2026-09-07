@@ -21,52 +21,82 @@ So every section here carries the same three things:
 - **Why it is built this way**: the decision and the alternative it beat.
 - **What it costs**: the trade-off you are accepting.
 
+And none of it is asserted from memory. The whole estate has been built,
+exercised and destroyed against a real organization three times over, by the
+scripts in [`lab/`](lab/), which are here so that you can do the same rather
+than believe the claim.
+
 ---
 
 ## How the pieces fit
 
-An editable version is in [`docs/diagrams/`](docs/diagrams/). Every element
-below was applied to a real organization and then destroyed.
+Every element below was applied to a real organization and then destroyed,
+three times. The diagram here is the current one; the editable file in
+[`docs/diagrams/`](docs/diagrams/) is an earlier version and predates the
+second environment, the delegated zones and the second node pool. It is kept
+for anyone who wants a starting point to draw over, not as a description of
+what this builds.
 
 ```mermaid
 flowchart TB
-    net([Internet]) --> armor[Cloud Armor<br/>managed rules, rate limit<br/>preview before enforcing]
-    armor --> lb[Global load balancer<br/>built from a Gateway<br/>TLS terminated here]
+    net([Internet]) --> armor[Cloud Armor<br/>managed rules, rate limit<br/>one policy per environment]
+    armor --> lb[Global load balancer<br/>built from one Gateway<br/>wildcard certificate, TLS ends here]
 
     subgraph org [Organization]
         subgraph shared [Folder: shared]
             subgraph host [Host project]
-                prod[VPC prod<br/>+ pod and service ranges]
-                dev[VPC dev]
-                fw[Firewall: default deny<br/>plus health probe ranges]
-                reg[Artifact Registry]
-                sec[Secret Manager<br/>containers only, never values]
+                vprod[VPC prod<br/>+ pod and service ranges]
+                vdev[VPC dev<br/>+ pod and service ranges]
+                fw[Firewall: default deny<br/>plus health probe ranges<br/>on the ports workloads serve]
+                reg[Artifact Registry<br/>a copy, and a proxy]
+                build[Cloud Build<br/>copies images in<br/>runs inside the platform]
             end
         end
-        subgraph product [Folder: product]
-            subgraph svc [Service project]
-                gke[GKE cluster<br/>runs on the host's subnet]
-                nfs[NFS pod<br/>ReadWriteMany from one disk]
-                app[Workload]
-                ctl[external-dns · cert-manager<br/>one identity, no keys]
+
+        subgraph product [Folder: apps]
+            subgraph sprod [Service project: prod]
+                gprod[GKE cluster<br/>spot pool + non-interruptible pool]
+                nprod[NFS pod<br/>ReadWriteMany from one disk]
+                aprod[ERP · automation · password manager]
+                cprod[external-dns · cert-manager<br/>one identity, no keys]
+            end
+            subgraph sdev [Service project: dev]
+                gdev[GKE cluster<br/>same components, same shape]
             end
         end
     end
 
-    lb -. health probes .-> app
-    gke --> prod
-    app --> nfs
-    app --> reg
-    ctl --> dns[(Cloud DNS<br/>zone in a third project)]
-    ctl --> ca([Certificate authority])
+    lb -. health probes .-> aprod
+    gprod --> vprod
+    gdev --> vdev
+    build --> reg
+    aprod --> reg
+    aprod --> nprod
+    cprod --> zprod[(Zone: prod<br/>delegated)]
+    cprod --> ca([Certificate authority])
+    zprod --> parent[(Parent zone<br/>a project this does not create)]
+    zdev[(Zone: dev<br/>delegated)] --> parent
 
-    prod x-.-x dev
+    vprod x-.-x vdev
 ```
 
-The crossed line between the two networks is the point of ADR 4: they are not
-peered, so there is no route to permit or deny. The dashed probe path is what
-the default-deny firewall blocked, which took a working application and made it
-return 503 to everyone.
+Three things in the picture are decisions rather than layout.
+
+The crossed line between the networks is ADR 4: they are not peered, so there
+is no route to permit or deny. The dashed probe path is what the default-deny
+firewall blocked, which took a working application and made it answer 503 to
+everyone while every pod reported healthy.
+
+And each environment publishes into its own delegated zone rather than into the
+one that owns the domain. ADR 26 called that the better answer and did not take
+it, because it needs control of the parent's delegation. Taking it means the
+record publisher writes into a zone that holds nothing but one environment, so
+the question of what it might do to the organization's mail records stops being
+a question rather than being mitigated.
+
+Development is drawn with less inside it for space, not because it has less in
+it. Both environments run the same set of components, which is the point of
+ADR 24: an environment that runs a smaller set rehearses nothing.
 
 ## Contents
 
@@ -193,6 +223,26 @@ The blast radius is the bench, not the site. ADR 13.
 
 → [Read it](platform/erpnext/)
 
+### `lab`
+
+The stack that verifies everything above, and the reason you do not have to
+take any of it on trust.
+
+It builds two environments that are the same set of components rather than a
+small one and a real one, installs every workload into both, and takes them
+down again. Three scripts: one that says what is missing before anything is
+created, one that goes from an empty project to a service answering on its own
+name, and one that removes an environment without touching the other.
+
+It exists because the first version of this repository described results it
+could no longer reproduce. The verification lived in a scratch directory and a
+reboot cleared it, leaving prose about an outcome and no way to check it. Most
+of the defects fixed here were found by this section, and nearly all of them
+were invisible until something was built where nothing had been, or taken down
+while something else stayed up.
+
+→ [Read it](lab/)
+
 ---
 
 ## What each part is, and is not
@@ -227,7 +277,19 @@ and is named here rather than left to be noticed.
 that cost something annotated, a persistent DNS zone, and the reasoning about
 benches. Not deployed from this repository yet, and it says so.
 
-**`docs/decisions`**: twenty-four decisions, each with what was rejected and what
+**`lab/`**: the stack that builds an environment to verify the rest, and the
+one script that installs everything into it. It builds two environments called
+development and production, and neither is a production environment;
+[what that would take](docs/from-the-lab-to-production.md) is written down
+rather than left to be discovered.
+
+**`lab/`**: three scripts and a Terraform stack that build two environments,
+install everything into both, and take them down. It is the part that makes the
+rest checkable. What it builds is not a production environment and
+[what that would take](docs/from-the-lab-to-production.md) is written down
+rather than left implied.
+
+**`docs/decisions`**: twenty-nine decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
 
 **`.github/workflows`**: checks that run without credentials, which is exactly
@@ -288,6 +350,11 @@ short, dated, and state what was rejected as well as what was chosen.
 22. [Secrets are referenced, never passed through a deployment tool](docs/decisions/0022-secrets-are-referenced-never-passed.md)
 23. [The foundation is built first, because it is the thing that gets built last](docs/decisions/0023-the-foundation-is-built-first.md)
 24. [What development proves is that it works in development](docs/decisions/0024-development-proves-it-works-in-development.md)
+25. [Control of a name is proven by writing DNS, not by answering on it](docs/decisions/0025-control-of-a-name-is-proven-by-writing-dns.md)
+26. [A controller writing into a shared zone may never delete](docs/decisions/0026-a-controller-writing-into-a-shared-zone-may-never-delete.md)
+27. [The edge belongs to the platform, not to the chart](docs/decisions/0027-the-edge-belongs-to-the-platform-not-to-the-chart.md)
+28. [Production refuses to be destroyed; development does not](docs/decisions/0028-production-refuses-to-be-destroyed.md)
+29. [What has to survive a rebuild, and what has to be thrown away](docs/decisions/0029-what-has-to-survive-a-rebuild.md)
 
 ---
 

@@ -1,0 +1,41 @@
+# Copies the images this estate runs into a repository it holds.
+#
+# It runs inside the platform rather than on whoever is installing, and that is
+# the whole point. The first version of this copied through the machine running
+# the install: source and destination were both remote, every byte crossed the
+# operator's link twice, and one image took over an hour. Here the bytes never
+# leave the region.
+#
+# The source is the caching repository rather than the public registry. That
+# repository fetches as this project rather than anonymously, so the anonymous
+# rate limit that intermittently refuses a direct pull does not apply, and the
+# image has usually been fetched already.
+#
+# What this buys over pulling through the proxy is the thing ADR 12 asks for: a
+# copy that exists whether or not upstream still serves it, under a tag nobody
+# outside this estate can move.
+steps:
+  - id: copy
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        set -e
+        while IFS='=' read -r name upstream; do
+          case "$name" in ''|\#*) continue ;; esac
+          tag="${upstream##*:}"
+          echo "==> $name"
+          crane copy "${_REGISTRY}/docker/${upstream}" "${_REGISTRY}/apps/${name}:${tag}"
+          crane digest "${_REGISTRY}/apps/${name}:${tag}"
+        done < images.env
+
+substitutions:
+  _REGISTRY: REPLACE_ME_REGISTRY
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# Large images over a slow first fetch. The default is ten minutes and the ERP
+# image alone can exceed it.
+timeout: 3600s

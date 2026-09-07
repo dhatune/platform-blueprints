@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars, which is not in version control.
+organization_id = "000000000000"
+billing_account = "XXXXXX-XXXXXX-XXXXXX"
+
+# A destroyed project's identifier is held for thirty days, so a rerun inside
+# that window needs a value that has not been used before.
+suffix = "abc123"
+
+# The zone lives elsewhere and outlives this stack. See ADR 26 for what a
+# controller may and may not do to a zone it does not own.
+dns_project = "example-dns-project"
+dns_domain  = "lab.example.test"
+
+# Development is applied and verified alone first, then production is added by
+# widening this list. Narrowing it again destroys the one removed, so the two
+# environments coexist only while both are named here.
+enabled_environments = ["dev", "prod"]
+acme_email = "platform@example.test"
+dns_parent_zone = "example-zone"
