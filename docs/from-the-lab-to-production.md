@@ -191,6 +191,26 @@ teardown of one environment reported the survival of the other as a failure.
 Every one of them was invisible until something was built where nothing had
 been, or taken down while something else stayed up.
 
+The cycle was then run once more, on a third set of projects, against the code
+as it stands. It failed at the first apply, on the same shape that had cost two
+earlier runs: a project ID passed as a string carries no dependency, so service
+projects were attached to a shared network before the host had been made one,
+and the error said the host was not a host.
+
+With that stated, everything after it ran untouched. Preflight passed and
+confirmed the identifiers were free. Both environments built. Both bootstraps
+exited zero. All six services answered 200 over HTTPS on wildcard certificates,
+with port 80 redirecting and the firewall refusing an injection on every one.
+Production refused its own teardown until permission was given. Development was
+destroyed while production kept serving. Production was destroyed last, and the
+end state is nothing: three projects awaiting deletion with billing off, no
+zones, no delegations, nothing in the state.
+
+One intervention, at the first step, on a defect that is now fixed. That is
+the closest this has come to the claim, and the claim is still narrower than it
+sounds: it ran on the author's machine, with the author's organization, and a
+clean checkout in somebody else's hands remains untested.
+
 ---
 
 # The changes, concretely
