@@ -161,6 +161,18 @@ module "app" {
 
   shared_vpc_host_project = module.host_project.project_id
 
+  # The host has to have been made a host before anything can attach to it.
+  #
+  # Passing its project ID is passing a string, and a string carries no
+  # dependency, so Terraform is free to attach a service project before the
+  # resource that enables sharing has run. The error says the host is not a
+  # host, which is true at that instant and confusing at any other.
+  #
+  # This is the third time the same shape has bitten in this stack: a project
+  # ID passed as a value, and an ordering that has to be stated because it
+  # cannot be inferred.
+  depends_on = [module.network]
+
   deletion_policy = each.value.deletion_policy
 
   activate_apis = [
