@@ -153,8 +153,8 @@ echo "==> Copying images into the repository this estate holds"
 # part and it only has to happen when an image in the list changes.
 IMAGES_FILE="${HERE}/../platform/images.env"
 
-# Associative arrays need a shell newer than the one macOS ships, and a script
-# that only runs on the author's machine is not automation.
+# Associative arrays need a shell newer than the one macOS ships. A script that
+# runs on one machine and not the next is not automation.
 pinned_set() { eval "PINNED_$1=\"$2\""; }
 pinned_get() { eval "printf '%s' \"\${PINNED_$1}\""; }
 

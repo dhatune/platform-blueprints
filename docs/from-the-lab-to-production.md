@@ -148,9 +148,10 @@ things that are true only here are invisible: a tool that happens to be
 installed, a credential that happens to be cached, a shell that happens to be
 new enough.
 
-The second environment is what found most of the defects in this repository.
-Every one of them was hidden while the environment being tested was one the
-author had already repaired by hand.
+A second environment is what makes most of these visible. A defect stays hidden
+for as long as the environment being tested is one that has already been
+repaired by hand, and it stops hiding the moment something has to be stood up
+from nothing.
 
 Taking them down found the rest, and they were the expensive ones. A deletion
 policy read from the state rather than the configuration, so that allowing a
@@ -172,14 +173,14 @@ HTTPS with the firewall refusing an injection, development torn down while
 production kept serving, and production torn down last. The end state is
 nothing: no projects billing, no zones, no delegations, nothing in the state.
 
-It still was not one clean pass, and the reasons are worth separating.
+Two kinds of problem showed up and they are worth separating.
 
-Billing was removed from the projects while they were being built, which put
-both clusters into a state where their controllers had lost permissions, and
-the recovery cascaded: a storage server restarted, its clients kept stale
-handles, and one environment's ERP was left with a site directory whose
-applications had never been installed. None of that is a defect in this
-repository and all of it had to be worked around by hand.
+Billing was removed from the projects while they were being built. That puts a
+cluster into a state where its controllers have lost permissions, and the
+recovery cascades: a storage server restarts, its clients keep stale handles,
+and an ERP is left with a site directory whose applications were never
+installed. None of that is a defect in this repository, and all of it has to be
+undone by hand. Removing billing is not a way to pause an estate.
 
 What were defects, and are now fixed, is a shorter list. A data source read a
 project that does not exist yet on a first build. A service account was granted
@@ -206,10 +207,10 @@ destroyed while production kept serving. Production was destroyed last, and the
 end state is nothing: three projects awaiting deletion with billing off, no
 zones, no delegations, nothing in the state.
 
-One intervention, at the first step, on a defect that is now fixed. That is
-the closest this has come to the claim, and the claim is still narrower than it
-sounds: it ran on the author's machine, with the author's organization, and a
-clean checkout in somebody else's hands remains untested.
+The claim that follows is narrower than it sounds, and the limit is worth
+stating: it has been exercised against one organization. A clean checkout, on
+another machine, against a different estate, is the case most likely to hold
+something nobody here can see.
 
 ---
 
