@@ -148,13 +148,17 @@ jobs:
           # Composing them here with the example values does two jobs: it
           # proves the overlay still builds, and it proves the example file
           # still has every key the overlay asks for.
-          for env in platform/edge/overlays/*/; do
-            cp "$env/values.env.example" "$env/values.env"
+          # Every generated file has a committed example beside it, so the
+          # overlays can be rendered here without building anything. An overlay
+          # that only renders after a deployment has run is one whose mistakes
+          # are found by deploying.
+          for example in platform/*/overlays/*/*.example; do
+            cp "$example" "${example%.example}"
           done
 
           for overlay in platform/n8n/base platform/n8n/test \
                          platform/vaultwarden/deploy \
-                         platform/edge/overlays/dev platform/edge/overlays/prod; do
+                         platform/*/overlays/*/; do
             kubectl kustomize "$overlay" >/dev/null && echo "ok  $overlay"
           done
 
@@ -171,7 +175,7 @@ jobs:
           # Rendering the overlay and reading the result is the only place that
           # failure is visible.
           fail=0
-          for overlay in platform/edge/overlays/dev platform/edge/overlays/prod; do
+          for overlay in platform/*/overlays/*/; do
             if kubectl kustomize "$overlay" | grep -n 'REPLACE_ME'; then
               echo "::error::$overlay renders with a value still unfilled."
               fail=1
@@ -210,7 +214,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - run: shellcheck platform/vaultwarden/backup/*.sh lab/bootstrap.sh lab/teardown.sh
+      - run: shellcheck platform/vaultwarden/backup/*.sh lab/*.sh
 
   links:
     name: links
