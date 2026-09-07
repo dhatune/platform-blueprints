@@ -295,13 +295,26 @@ at ingestion rather than paying to store what nobody reads. ADR 14.
 
 **The ERP writes to a single pod.**
 Now: an NFS server in the cluster, on a single-attach disk.
-Why: a managed file service is billed on provisioned capacity with a floor far
-above what one bench uses, often more than the rest of the cluster combined.
-For an internal system where an hour of downtime during a node event is
-acceptable, this is the right answer and the section says so.
-Change: a managed file service instance, and the storage class points at it.
-The deciding question is not cost, it is whether the ERP stopping for an hour
-during an ordinary node upgrade is acceptable.
+Why: a managed file service is billed on provisioned capacity, and every tier
+has a minimum instance size well above what one bench uses. A deployment
+holding twenty gigabytes pays for the floor, which is frequently more than the
+rest of the cluster combined. For an internal system where an hour of downtime
+during a node event is acceptable, the pod is the right answer and the section
+says so.
+Change: a Filestore instance, its CSI driver enabled on the cluster, and a
+storage class pointing at the instance's share. The workloads do not change:
+they claim `ReadWriteMany` either way, so only the class named in the claim
+moves.
+
+Three things decide it, in this order. Whether an hour of downtime during an
+ordinary node upgrade is acceptable, because that is what the pod costs and the
+instance removes. Then the minimum capacity of the cheapest tier that meets
+your latency, since that number is the bill rather than what you store. Then
+whether you need snapshots and regional availability, which the tiers differ on
+and the pod does not offer at all.
+
+Look the minimums and the per-tier prices up rather than trusting a figure
+written here: they change, and the whole decision turns on them.
 
 **The encrypted class is encrypted by the platform.**
 Now: `platform/storage/encrypted-standard.yaml` uses the default key.
@@ -314,11 +327,27 @@ is already there, commented, with the shape of the value.
 Now: no backup for the ERP's database, the automation service's database, or
 the password manager's volume.
 Why: nothing here is meant to survive.
-Change: a backup plan for the cluster's volumes, and a schedule per database
-that dumps rather than snapshots, because a snapshot of a running database is
-valid often enough to be trusted and corrupt often enough to matter. Then a
-restore that runs on a schedule and fails loudly, because ADR 7 is that a
-backup nobody has restored is a belief.
+Change: three separate mechanisms, because they fail differently and one does
+not substitute for another.
+
+The databases are dumped logically, on a schedule, by a job that runs beside
+them and writes to a bucket in a project the cluster cannot delete from. A
+dump, not a disk snapshot: a snapshot of a running database is valid often
+enough to be trusted and corrupt often enough to matter. The password manager
+already has this in `platform/vaultwarden/backup/`, using the engine's own
+backup call rather than copying the file, and that is the shape to copy.
+
+The volumes are covered by the platform's own backup for clusters, which
+captures what a dump cannot: the objects, the secrets and the claims that
+describe how the thing was assembled.
+
+And a restore runs on a schedule against the most recent backup, into somewhere
+disposable, and fails loudly when it does not work. That last one is the whole
+of ADR 7 and it is the one that gets skipped, because the first two produce
+files and files look like safety.
+
+The bucket holds versions and refuses deletion for a fixed period. A backup an
+attacker can delete is a backup for accidents only.
 
 ## Identity and secrets
 
@@ -326,20 +355,44 @@ backup nobody has restored is a belief.
 Now: `lab/bootstrap.sh` creates them with `openssl` and applies them.
 Why: it makes the environment reproducible from nothing, which is what the lab
 is for.
-Change: a secret manager holding them, and a driver that mounts them, so the
-manifests reference rather than receive. ADR 22. Two specifics: the automation
-service's encryption key must survive the cluster, because losing it costs
-every stored credential even with a perfect database backup; and the ERP's
-administrative password has to be set from a value taken out of the manager
-rather than printed once to a terminal.
+Change: the values live in a secret manager, and a driver mounts them into the
+pods that need them, so the manifests reference rather than receive. The pods
+reach the manager through the same workload identity the DNS controllers
+already use, which means no key is created for this either. ADR 22.
+
+Two of them need more than a move.
+
+The automation service's encryption key must outlive the cluster. It encrypts
+every stored credential, and regenerating it costs all of them even with a
+perfect database backup. It belongs in the category that survives a rebuild,
+which is ADR 29, and today the installer makes a new one each time.
+
+The ERP's administrative password is set when the site is created and cannot be
+read back from the application afterwards. It has to be written to the manager
+before the site is made and read from there, rather than printed once. And note
+what the section's own README says about passing it to the chart at all: the
+release history keeps the values it was given, in clear, readable by anyone who
+can read secrets in that namespace, including after the person who set it has
+left.
 
 **The password manager is reachable by anyone who can resolve its name.**
 Now: an ordinary route to an ordinary service.
 Why: putting an identity check in front needs an identity provider, a consent
 screen and a group, none of which a lab has.
-Change: an identity-aware proxy in front of that backend, so an
-unauthenticated request never arrives and a flaw in the application's own login
-cannot be reached by a stranger. ADR 16.
+Change: an identity-aware proxy in front of that one backend, so an
+unauthenticated request never reaches the application and a flaw in its own
+login cannot be found by a stranger. ADR 16.
+
+What it costs is setup that a lab cannot fake. It needs an identity provider
+with the people already in it, a consent screen registered against a domain you
+own, a group that decides who gets through, and the proxy enabled on the
+backend rather than on the whole entry point, because the other services are
+meant to be public.
+
+The order matters: enable it and grant the group before you point the name at
+it. Doing it the other way leaves a window where the service is reachable and
+the proxy is not yet deciding anything, and that window is exactly the state
+this is meant to prevent.
 
 ## The stack itself: `lab/`
 
