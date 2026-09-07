@@ -1,0 +1,25 @@
+# The class the password manager's disk asks for.
+#
+# Its manifest names an encrypted class rather than the platform default,
+# because the disk holds the credentials to everything else and the choice
+# should be visible in the manifest rather than inherited from whatever the
+# cluster happens to default to.
+#
+# In a real estate this is defined with a key the organization controls, so
+# that destroying the key destroys the data and the platform operator alone
+# cannot read the volume. Here it is the platform's own encryption, which is
+# on by default and is not the same guarantee: the point of the separate class
+# is that upgrading it later changes one object rather than every manifest that
+# asked for a disk.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: encrypted-standard
+provisioner: pd.csi.storage.gke.io
+parameters:
+  type: pd-balanced
+  # A customer-managed key goes here:
+  # disk-encryption-kms-key: projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete
+allowVolumeExpansion: true

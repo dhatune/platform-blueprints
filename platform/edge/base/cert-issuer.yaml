@@ -1,0 +1,36 @@
+# How certificates are obtained.
+#
+# Two ways to prove control of a name to a certificate authority, and they fail
+# differently.
+#
+# An HTTP challenge answers a request on the name itself, so it needs the name
+# to already resolve to this cluster and the entry point to already be serving.
+# On a first deployment none of that is true yet, which makes the first
+# certificate the hardest one: the entry point waits for the certificate and
+# the certificate waits for the entry point.
+#
+# A DNS challenge writes a record instead. It has no such ordering problem, it
+# works before anything is reachable, and it is the only option for a name that
+# is never exposed publicly. The cost is that the issuer needs permission to
+# write DNS, the same permission the record publisher already has, which is
+# why they share one identity here.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: REPLACE_ME_EMAIL
+    privateKeySecretRef:
+      # The account key. Losing it does not invalidate issued certificates, but
+      # it does lose the rate limit history and the ability to revoke as that
+      # account. It is a secret worth backing up and is usually not.
+      name: letsencrypt-account
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: REPLACE_ME_DNS_PROJECT
+            # No key file. The pod holds the identity through the cluster's
+            # workload identity pool, and the permission lives in the project
+            # that owns the zone rather than this one.

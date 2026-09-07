@@ -143,9 +143,70 @@ jobs:
             platform/n8n/base platform/vaultwarden/deploy
       - name: Compose the overlays
         run: |
-          for overlay in platform/n8n/base platform/n8n/test platform/vaultwarden/deploy; do
+          # The edge overlays read values from a file that is deliberately not
+          # in version control, the same arrangement the Terraform stack uses.
+          # Composing them here with the example values does two jobs: it
+          # proves the overlay still builds, and it proves the example file
+          # still has every key the overlay asks for.
+          # Every generated file has a committed example beside it, so the
+          # overlays can be rendered here without building anything. An overlay
+          # that only renders after a deployment has run is one whose mistakes
+          # are found by deploying.
+          for example in platform/*/overlays/*/*.example; do
+            cp "$example" "${example%.example}"
+          done
+
+          for overlay in platform/n8n/base platform/n8n/test \
+                         platform/vaultwarden/deploy \
+                         platform/*/overlays/*/; do
             kubectl kustomize "$overlay" >/dev/null && echo "ok  $overlay"
           done
+
+      - name: Refuse a rendered manifest that still has a blank in it
+        run: |
+          # This is the check the templating tool cannot do for itself.
+          #
+          # A kustomize replacement whose target selector matches nothing is
+          # not an error and prints no warning. The placeholder simply survives
+          # into the output, and what gets applied is a Gateway whose hostname
+          # is the literal string REPLACE_ME_HOST. The service is broken and
+          # every tool in the chain reported success.
+          #
+          # Rendering the overlay and reading the result is the only place that
+          # failure is visible.
+          fail=0
+          for overlay in platform/*/overlays/*/; do
+            if kubectl kustomize "$overlay" | grep -n 'REPLACE_ME'; then
+              echo "::error::$overlay renders with a value still unfilled."
+              fail=1
+            else
+              echo "ok  $overlay"
+            fi
+          done
+          exit $fail
+
+      - name: Refuse a probe port the network does not allow
+        run: |
+          pip install pyyaml >/dev/null
+          python3 .github/scripts/check_health_check_ports.py
+
+      - name: Refuse two environments that claim the same DNS records
+        run: |
+          # The record publisher marks what it owns with an identifier. Two
+          # clusters sharing one claim each other's entries and fight: names
+          # appear and disappear, and nothing connects the symptom to the
+          # cause.
+          #
+          # No templating tool catches this. It is only ever wrong because
+          # somebody copied one environment to make another, which is exactly
+          # how the second environment gets made.
+          ids=$(grep -h '^txtOwnerId=' platform/edge/overlays/*/values.env.example | sort)
+          if [ "$(echo "$ids" | wc -l)" != "$(echo "$ids" | sort -u | wc -l)" ]; then
+            echo "::error::Two environments share a txtOwnerId."
+            echo "$ids"
+            exit 1
+          fi
+          echo "ok  each environment owns its own records"
 
   shell:
     name: shell
@@ -153,7 +214,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - run: shellcheck platform/vaultwarden/backup/*.sh
+      - run: shellcheck platform/vaultwarden/backup/*.sh lab/*.sh
 
   links:
     name: links

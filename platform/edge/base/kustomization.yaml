@@ -1,0 +1,11 @@
+# The shared edge: the record publisher, the certificate issuer, and the one
+# entry point everything attaches to.
+#
+# Per-workload routing is not here. It lives beside each workload, from the
+# template in ../workload-template.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - external-dns.yaml
+  - cert-issuer.yaml
+  - gateway.yaml
