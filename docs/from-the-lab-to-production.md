@@ -166,9 +166,30 @@ took five interventions to get there. A cycle that needs a person five times is
 not automated, and every one of those interventions is now a change in the
 script rather than a step in somebody's memory.
 
-What is still unproven is the whole cycle running clean in one pass, with the
-fixes in place, without a hand on it. Until that happens the claim is that each
-piece works, which is a smaller claim than it sounds.
+The cycle was then run again end to end, on projects that had never existed:
+both environments built, all six services answering on their own names over
+HTTPS with the firewall refusing an injection, development torn down while
+production kept serving, and production torn down last. The end state is
+nothing: no projects billing, no zones, no delegations, nothing in the state.
+
+It still was not one clean pass, and the reasons are worth separating.
+
+Billing was removed from the projects while they were being built, which put
+both clusters into a state where their controllers had lost permissions, and
+the recovery cascaded: a storage server restarted, its clients kept stale
+handles, and one environment's ERP was left with a site directory whose
+applications had never been installed. None of that is a defect in this
+repository and all of it had to be worked around by hand.
+
+What were defects, and are now fixed, is a shorter list. A data source read a
+project that does not exist yet on a first build. A service account was granted
+a role before it had been asked into existence. Whether to create a site was
+decided by looking for a job that had run rather than a site that works, and
+then by looking for a directory, which a half-created site also has. And a
+teardown of one environment reported the survival of the other as a failure.
+
+Every one of them was invisible until something was built where nothing had
+been, or taken down while something else stayed up.
 
 ---
 
