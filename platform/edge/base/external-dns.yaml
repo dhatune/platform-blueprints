@@ -1,0 +1,107 @@
+# Publishes the hostnames a cluster serves, into a zone it does not own.
+#
+# The controller watches routes and writes the DNS records that make them
+# reachable. Nothing else in the cluster knows the name it answers to.
+apiVersion: v1
+kind: Namespace
+metadata: { name: external-dns }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: external-dns
+  annotations:
+    # No key. The pod assumes this identity through the cluster's workload
+    # identity pool, and the permission it needs lives in another project.
+    iam.gke.io/gcp-service-account: REPLACE_ME_DNS_SERVICE_ACCOUNT
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: external-dns }
+rules:
+  - apiGroups: [""]
+    # Namespaces are on this list because routes attach to a gateway in another
+    # one, and resolving that means reading them. Without it the controller
+    # starts, connects, and dies a minute later saying it could not sync
+    # namespaces, which reads like a network fault rather than a permission.
+    resources: ["services", "endpoints", "pods", "nodes", "namespaces"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gateways", "httproutes", "grpcroutes", "tlsroutes", "tcproutes", "udproutes"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: external-dns }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: external-dns }
+subjects:
+  - { kind: ServiceAccount, name: external-dns, namespace: external-dns }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: external-dns, namespace: external-dns }
+spec:
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: external-dns } }
+  template:
+    metadata: { labels: { app: external-dns } }
+    spec:
+      serviceAccountName: external-dns
+      containers:
+        - name: external-dns
+          image: registry.k8s.io/external-dns/external-dns:v0.15.0
+          args:
+            - --source=gateway-httproute
+            - --provider=google
+
+            # Two independent limits on what this can touch, because it writes
+            # into a zone that also holds the domain's mail records and its
+            # website.
+            #
+            # The filter confines it to one subtree. upsert-only is the one
+            # that matters: this controller has a mode that deletes records it
+            # does not recognize, and that mode is a single flag away, set by
+            # somebody making a removed service stop resolving. With
+            # upsert-only it cannot delete anything, ever, including its own
+            # records, which is a real cost, since stale names accumulate and
+            # have to be removed by hand.
+            #
+            # For a zone that belongs to the automation, sync is right. For one
+            # that belongs to the business, it is not.
+            - --policy=upsert-only
+
+            # Ownership is recorded in a TXT record beside each entry, so this
+            # controller can tell its own records from ones a person created.
+            # Without it, two clusters sharing a zone fight over every name.
+            - --registry=txt
+            - --log-level=info
+
+          # The three values that differ between environments are read from the
+          # environment rather than written into the arguments. Every flag this
+          # controller takes has an EXTERNAL_DNS_ equivalent, and a value in a
+          # config map is one a templating tool can set without rewriting an
+          # argument list positionally.
+          env:
+            - name: EXTERNAL_DNS_DOMAIN_FILTER
+              valueFrom:
+                configMapKeyRef: { name: edge-values, key: domainFilter }
+            - name: EXTERNAL_DNS_GOOGLE_PROJECT
+              valueFrom:
+                configMapKeyRef: { name: edge-values, key: dnsProject }
+            # Unique per cluster. Two clusters sharing this value claim each
+            # other's ownership records and fight over every name.
+            - name: EXTERNAL_DNS_TXT_OWNER_ID
+              valueFrom:
+                configMapKeyRef: { name: edge-values, key: txtOwnerId }
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { memory: 128Mi }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }

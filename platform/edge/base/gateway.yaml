@@ -1,0 +1,95 @@
+# The entry point. One for the whole environment, not one per workload.
+#
+# A Gateway is a load balancer that the platform builds when this object
+# appears. It takes minutes rather than seconds, and while it is being built
+# the object exists and answers nothing, which reads like a broken
+# configuration and is not.
+#
+# One Gateway rather than one per service, for two reasons. Each Gateway builds
+# its own load balancer and is billed for it, so three services would pay three
+# times to do one job. And the firewall and the health check attach to backends
+# behind an entry point: one entry point is one place to look for what is
+# exposed, which is the whole argument of ADR 27.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: edge
+  namespace: gateway
+spec:
+  # The global external class needs no proxy-only subnet. The regional one
+  # does, and a regional Gateway on a network without it stays pending with a
+  # message that names the subnet rather than explaining what is missing.
+  gatewayClassName: gke-l7-global-external-managed
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      # One wildcard rather than a listener per service. Adding a service then
+      # costs a route and nothing here, and the certificate does not have to be
+      # reissued every time the estate grows.
+      #
+      # A wildcard certificate can only be obtained by writing DNS. The other
+      # challenge answers on a name, and a wildcard is not a name. ADR 25 chose
+      # the DNS challenge for a different reason and this comes free with it.
+      hostname: REPLACE_ME_WILDCARD
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: edge-tls
+      # Workloads live in their own namespaces and attach their own routes.
+      # The alternative is every route in this one, which makes the namespace
+      # a shared writable surface for every team that has a service.
+      allowedRoutes:
+        namespaces:
+          from: All
+    # Port 80 exists only to send people to 443. Leaving it off means a plain
+    # http:// link fails to connect rather than redirecting, which users report
+    # as the site being down.
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: REPLACE_ME_WILDCARD
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# The certificate. cert-manager fills the secret the listener above references;
+# until it does, the listener is not ready and the Gateway serves nothing on
+# 443. That ordering is normal and is the usual reason a first deployment looks
+# stuck.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: edge-tls
+  namespace: gateway
+spec:
+  secretName: edge-tls
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - REPLACE_ME_WILDCARD
+---
+# Everything arriving on 80 is redirected rather than served. A separate route,
+# because a rule that both redirects and proxies is not expressible, and it
+# lives here rather than with a workload because it applies to all of them.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: redirect-to-https
+  namespace: gateway
+spec:
+  parentRefs:
+    - name: edge
+      sectionName: http
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301
