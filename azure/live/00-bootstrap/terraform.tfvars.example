@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is git ignored because
+# it carries the subscription identifier.
+
+prefix          = ""
+workload        = ""
+environment     = ""
+location        = ""
+location_short  = ""
+subscription_id = ""

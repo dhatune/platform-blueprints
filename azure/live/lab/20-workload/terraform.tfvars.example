@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is git ignored because
+# it carries subscription and tenant identifiers.
+
+subscription_id = ""
+tenant_id       = ""
+
+# Same values as live/lab/10-platform: this stack derives names from them and
+# reads the platform's outputs from its state.
+prefix         = ""
+workload       = ""
+location_short = ""
+
+# Where live/lab/10-platform keeps its state: the outputs of live/00-bootstrap.
+platform_state_resource_group_name  = ""
+platform_state_storage_account_name = ""
+platform_state_container_name       = "tfstate"
+platform_state_key                  = "lab/10-platform.tfstate"

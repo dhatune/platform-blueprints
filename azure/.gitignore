@@ -1,0 +1,24 @@
+# Terraform working directories and state
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Variable files may carry subscription and tenant identifiers
+terraform.tfvars
+*.auto.tfvars
+backend.hcl
+
+# Provider lock files are committed on purpose; do not ignore them.
+# .terraform.lock.hcl
+
+build/
+
+# Raw output of scripts/verify/run-all.sh carries real resource identifiers.
+# Publish only sanitized copies, under docs/verified/.
+docs/evidence/
+
+# Lock files belong to root modules, which are the stacks under live/.
+# Validating a child module creates one next to it; it is never committed.
+modules/*/.terraform.lock.hcl

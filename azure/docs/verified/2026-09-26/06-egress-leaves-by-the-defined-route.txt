@@ -1,0 +1,163 @@
+confirming the probe image is in the registry (acrvalalzlabeus201.azurecr.io/verify-probe:curl)
+  present
+checking the firewall has a diagnostic setting sending logs somewhere queryable
+[
+  {
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/rg-val-alz-lab-eus2-01-hub/providers/microsoft.network/azurefirewalls/afw-val-alz-lab-eus2-01/providers/microsoft.insights/diagnosticSettings/diag-val-alz-lab-eus2-01-firewall",
+    "logAnalyticsDestinationType": "Dedicated",
+    "logs": [
+      {
+        "category": "AZFWNetworkRule",
+        "enabled": true,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWApplicationRule",
+        "enabled": true,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AzureFirewallApplicationRule",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AzureFirewallNetworkRule",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AzureFirewallDnsProxy",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWNatRule",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWThreatIntel",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWIdpsSignature",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWDnsQuery",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWFqdnResolveFailure",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWFatFlow",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWFlowTrace",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWApplicationRuleAggregation",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWNetworkRuleAggregation",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWNatRuleAggregation",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      },
+      {
+        "category": "AZFWDnsAdditional",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      }
+    ],
+    "metrics": [
+      {
+        "category": "AllMetrics",
+        "enabled": false,
+        "retentionPolicy": {
+          "days": 0,
+          "enabled": false
+        }
+      }
+    ],
+    "name": "diag-val-alz-lab-eus2-01-firewall",
+    "resourceGroup": "rg-val-alz-lab-eus2-01-hub",
+    "type": "Microsoft.Insights/diagnosticSettings",
+    "workspaceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-val-alz-lab-eus2-01-spoke/providers/Microsoft.OperationalInsights/workspaces/log-val-alz-lab-eus2-01"
+  }
+]
+  workspace: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-val-alz-lab-eus2-01-spoke/providers/Microsoft.OperationalInsights/workspaces/log-val-alz-lab-eus2-01
+generating one allowed and one denied flow to have something fresh to find
+polling the workspace for both records (Azure Firewall log ingestion typically lags by minutes)
+
+
+
+2026-09-26T09:37:06.793169Z	Deny	ifconfig.me
+2026-09-26T09:36:50.776705Z	Allow	mcr.microsoft.com
+  found both: the allowed flow to mcr.microsoft.com, and the denial of ifconfig.me
+PASS: the firewall's own log records both the permitted flow and the refusal

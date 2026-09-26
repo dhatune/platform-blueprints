@@ -126,6 +126,10 @@ jobs:
             fi
             terraform -chdir="$dir" validate
           done
+      - name: Azure landing zone, validated and tested against a mocked provider
+        # The Azure tree carries its own suite: format, validate and every
+        # terraform test file, with no credentials and no cloud.
+        run: ./azure/scripts/verify-tree.sh
 
   kubernetes:
     name: kubernetes
