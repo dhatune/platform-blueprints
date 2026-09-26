@@ -1,0 +1,12 @@
+confirming the probe image is in the registry (acrvalalzlabeus201.azurecr.io/verify-probe:curl)
+  present
+allowed half: pod (snet-cluster) -> vault endpoint (kv-valalzlabeus201.vault.azure.net at 10.61.2.5) on 443, must connect (ASG allow)
+404 0.004823
+probe-phase: Succeeded
+  reached the vault endpoint (HTTP 404), as intended
+denied half: pod (snet-cluster) -> storage endpoint (stvalalzlabeus201.blob.core.windows.net at 10.61.2.4) on 443, must never connect (default deny)
+curl: (28) Connection timed out after 8000 milliseconds
+000 0.000000
+probe-phase: Failed
+  the TCP connection never completed (000 0.000000), as intended
+PASS: the allowed endpoint (vault, in ASG) is reached, and the denied endpoint (storage, not in ASG) is refused

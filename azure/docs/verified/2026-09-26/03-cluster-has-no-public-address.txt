@@ -1,0 +1,15 @@
+confirming the cluster exists and reports a private control-plane address
+{
+  "fqdn": null,
+  "nodeRG": "MC_rg-val-alz-lab-eus2-01-spoke_aks-val-alz-lab-eus2-01_eastus2",
+  "privateFqdn": "aks-val-alz-lab-eus2-01-xxxxxxxx.aaaaaaaa-0000-0000-0000-000000000002.privatelink.eastus2.azmk8s.io"
+}
+  private control-plane address exists: aks-val-alz-lab-eus2-01-xxxxxxxx.aaaaaaaa-0000-0000-0000-000000000002.privatelink.eastus2.azmk8s.io
+  no public control-plane address
+listing Virtual Machine Scale Sets in the node resource group (MC_rg-val-alz-lab-eus2-01-spoke_aks-val-alz-lab-eus2-01_eastus2)
+  found        1 VMSS
+checking that no VMSS has public IP address configurations
+  VMSS aks-system-33988155-vmss has no public IP configurations
+checking that no public IPs exist in the node resource group
+  no public IP addresses in MC_rg-val-alz-lab-eus2-01-spoke_aks-val-alz-lab-eus2-01_eastus2
+PASS: neither the control plane nor any node has a public address

@@ -1,0 +1,12 @@
+confirming the probe image is in the registry (acrvalalzlabeus201.azurecr.io/verify-probe:curl)
+  present
+pod -> ifconfig.me (must be refused)
+curl: (35) TLS connect error: error:0A000126:SSL routines::unexpected eof while reading
+000
+probe-phase: Failed
+  refused, as intended
+pod -> mcr.microsoft.com (must succeed)
+200
+probe-phase: Succeeded
+  reached, as intended
+PASS: default egress is denied from the pod, and the one declared path still works

@@ -1,0 +1,6 @@
+creating a public address on its own, which must be allowed
+WARNING: [Coming breaking change] In the coming release, the default behavior will be changed as follows when sku is Standard and zone is not provided: For zonal regions, you will get a zone-redundant IP indicated by zones:["1","2","3"]; For non-zonal regions, you will get a non zone-redundant IP indicated by zones:null.
+  allowed, as intended
+attaching it to a network interface, which must be denied
+  denied by this deployment's own assignment: val-alz-lab-eus2-01-deny-public-nic
+PASS: the policy denies a public address on a network interface
