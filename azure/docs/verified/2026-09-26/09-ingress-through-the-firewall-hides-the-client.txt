@@ -1,0 +1,12 @@
+confirming the ingress controller is running
+  ready
+declaring a temporary Ingress for verify.invalid
+ingress.networking.k8s.io/verify-9 created
+
+requesting http://203.0.113.10/verify-9-1790415730-7894 from this machine
+  HTTP 503
+  answered: the request crossed the firewall and reached the ingress
+reading the ingress access log for that request
+  the ingress logged the caller as 10.60.0.6
+  10.60.0.6 is inside the firewall subnet 10.60.0.0/24, not this machine
+PASS: internet traffic reaches the ingress through the firewall, and the firewall replaces the client's address with its own

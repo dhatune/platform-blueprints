@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is git ignored because
+# it carries subscription and tenant identifiers.
+
+prefix          = ""
+workload        = ""
+location        = ""
+location_short  = ""
+subscription_id = ""
+tenant_id       = ""
+
+# The vault stays closed unless this names the operator's own address. See the
+# variable's description in variables.tf before setting it.
+vault_operator_ip_rules = []
+
+# No budget alert is created while this is empty -- a budget nobody is
+# watching is not a control. Fill in real addresses to turn it on.
+budget_contact_emails = []

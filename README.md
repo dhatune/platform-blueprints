@@ -1,7 +1,9 @@
 # Platform Blueprints
 
 Reference implementations and architecture decisions from building and running
-the technology platform of two operating businesses on Google Cloud.
+the technology platform of two operating businesses on Google Cloud, and a
+laboratory landing zone on Azure built to learn the second cloud to the same
+standard.
 
 This is not a tutorial collection. Each piece here answers a question I had to
 answer with money and uptime on the line, and the reasoning is included because
@@ -223,6 +225,25 @@ The blast radius is the bench, not the site. ADR 13.
 
 → [Read it](platform/erpnext/)
 
+### `azure`
+
+A laboratory landing zone for one private workload on Azure: hub and spoke with
+deny-by-default segmentation, an egress firewall, a private AKS cluster, a
+private registry, a vault and an object repository reachable only through
+private endpoints, and workload identity with no stored secrets.
+
+It carries its own guide and its own proof. The README takes someone else from
+an empty subscription to a running lab, and nine scripts check the declared
+security against Azure itself: egress refused except to the declared
+destinations, no public address on the cluster, a secret read by workload
+identity and refused to the node's identity, segmentation between two private
+endpoints in the same subnet, and what the firewall does to inbound traffic.
+The transcripts of the last run, deployed from a clean copy, are published
+next to the code. Thirteen decisions record what each choice beat and cost,
+including why this is not Microsoft's enterprise-scale landing zone.
+
+→ [Read it](azure/)
+
 ### `lab`
 
 The stack that verifies everything above, and the reason you do not have to
@@ -287,6 +308,13 @@ install everything into both, and take them down. It is the part that makes the
 rest checkable. What it builds is not a production environment and
 [what that would take](docs/from-the-lab-to-production.md) is written down
 rather than left implied.
+
+**`azure`**: a laboratory, not a platform in operation, and it says so on its
+first page. One subscription, one spoke, one node, no high availability, no
+HTTPS on the way in, no pipeline. What it does have is a clean-copy deployment
+that a stranger can repeat and nine checks that fail rather than pass when
+they cannot tell. Its decisions live in [`azure/docs/decisions`](azure/docs/decisions/),
+numbered on their own.
 
 **`docs/decisions`**: twenty-nine decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
