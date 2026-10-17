@@ -97,6 +97,15 @@ what the pieces inside one spoke do.
   redundant storage (docs/decisions/0002).
 - **No HTTPS, WAF or global edge:** traffic enters over plain HTTP through the
   firewall, enough to prove the path, not to serve users (docs/decisions/0012).
+- **The ingress manifest is pinned to v1.12.1,** the release that fixed
+  CVE-2025-1974. The configuration-injection advisories published in 2026
+  (CVE-2026-3288, CVE-2026-24512, CVE-2026-1580) are fixed from 1.13.8, 1.14.4
+  and 1.15.0 onward, so this pin sits below all three. The laboratory does not
+  mitigate them, it stays out of their reach: the cluster holds no public
+  address (check 3), nothing enters except through the firewall's single
+  translation rule (docs/decisions/0012), and the only Ingress objects are the
+  ones this repository declares. Anything serving real users takes the current
+  release instead.
 - **No Kubernetes network policies:** the cluster runs Cilium with network
   policy enabled, but declares no NetworkPolicy objects, so segmentation stops
   at the subnet.
