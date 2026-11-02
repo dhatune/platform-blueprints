@@ -1,0 +1,70 @@
+# Case 7: traceability. The auditor (aud1, read-only) exports who ran what and who
+# approved what; the CSV lands in the evidence bucket; platform logs reach Cloud Logging.
+# Run after verify-patching so there is an op1 workflow and a sec1 approval to find.
+# Run: make verify-audit
+- name: Verify audit export and centralized logs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    api: "https://{{ lookup('env', 'AAP_HOST') }}/api/controller/v2"
+    project: "{{ lookup('env', 'PROJECT_ID') }}"
+    account: "{{ lookup('env', 'GCP_ACCOUNT') }}"
+  tasks:
+    - name: The auditor launches the audit export
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars:
+        jt_name: export-auditoria
+        jt_user: aud1
+        jt_password: "{{ lookup('env', 'USER_PASSWORD_AUD1') }}"
+
+    - name: Export job output
+      ansible.builtin.uri:
+        url: "{{ api }}/jobs/{{ launched.json.id }}/stdout/?format=txt"
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: export_out
+
+    - name: Object written by the export
+      ansible.builtin.set_fact:
+        audit_object: "{{ export_out.content | regex_search('object=(gs://\\S+\\.csv)', '\\1') | first }}"
+
+    - name: Read the CSV from the bucket (as the administrator)
+      ansible.builtin.command:
+        argv: [gcloud, storage, cat, "{{ audit_object }}", --project, "{{ project }}", --account, "{{ account }}"]
+      register: csv
+      changed_when: false
+
+    - name: Platform logs present in Cloud Logging (last hour)
+      ansible.builtin.command:
+        argv:
+          - gcloud
+          - logging
+          - read
+          - 'resource.type="gce_instance" AND jsonPayload._SYSTEMD_USER_UNIT:"automation-controller"'
+          - --freshness=1h
+          - --limit=5
+          - --format=value(timestamp)
+          - --project={{ project }}
+          - --account={{ account }}
+      register: cloud_logs
+      changed_when: false
+
+    - name: Assert traceability
+      vars:
+        rows: "{{ csv.stdout_lines }}"
+      ansible.builtin.assert:
+        that:
+          - launched.json.status == 'successful'
+          - rows[0] is search('launched_by')
+          - rows | select('search', '^workflow_job,.*parcheo-controlado.*,op1,') | list | length > 0
+          - rows | select('search', '^workflow_approval,.*,sec1,') | list | length > 0
+          - cloud_logs.stdout_lines | length > 0
+        fail_msg: "export={{ launched.json.status }} rows={{ rows | length }} logs={{ cloud_logs.stdout_lines | length }}"
+        success_msg: >-
+          Audit OK: aud1 exported {{ rows | length - 1 }} records to {{ audit_object }};
+          it shows the patch workflow launched by op1 and the approval by sec1;
+          controller logs present in Cloud Logging

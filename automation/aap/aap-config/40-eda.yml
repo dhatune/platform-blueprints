@@ -1,0 +1,197 @@
+# Case 6: Event-Driven Ansible.
+#   node watchdog --(HTTPS, token)--> event stream "servicio-caido" --> activation "remediacion-servicio"
+#   --> job template "remediar-servicio" (launched as the least-privilege user eda-svc)
+- name: Configure Event-Driven Ansible
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/objects.yml
+  vars:
+    aap_url: "https://{{ lookup('env', 'AAP_HOST') }}"
+    eda_token: "{{ lookup('file', lookup('env', 'HOME') ~ '/.aap-lab/eda-token') }}"
+  module_defaults:
+    group/ansible.platform.gateway: &gw
+      aap_hostname: "{{ aap_url }}"
+      aap_username: admin
+      aap_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      aap_validate_certs: false
+    group/ansible.eda.eda:
+      controller_host: "{{ aap_url }}"
+      controller_username: admin
+      controller_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      validate_certs: false
+  tasks:
+    # ---------- service identity for EDA ----------
+    - name: Look up the EDA service user
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/gateway/v1/users/?username=eda-svc"
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: eda_user
+
+    - name: Create the EDA service user (password only on creation)
+      ansible.platform.user:
+        username: eda-svc
+        first_name: EDA service
+        email: eda-svc@example.org
+        password: "{{ lookup('env', 'USER_PASSWORD_EDA') }}"
+        organizations: ["{{ aap_org }}"]
+      when: eda_user.json.count == 0
+      no_log: true
+
+    # Done on the controller side: the gateway answered HTTP 500 when assigning a
+    # controller-object role to a user by name (error 32).
+    - name: eda-svc may only launch the remediation job template
+      ansible.controller.role_user_assignment:
+        role_definition: JobTemplate Execute
+        user: eda-svc
+        object_id: >-
+          {{ lookup('ansible.controller.controller_api', 'job_templates',
+                    query_params={'name': 'remediar-servicio'}, return_ids=true, expect_one=true) | int }}
+
+    # ---------- EDA credentials ----------
+    - name: EDA credentials
+      ansible.eda.credential:
+        name: "{{ item.name }}"
+        credential_type_name: "{{ item.type }}"
+        organization_name: "{{ aap_org }}"
+        inputs: "{{ item.inputs }}"
+      loop:
+        - name: eda-github-deploy-key
+          type: Source Control
+          inputs:
+            ssh_key_data: "{{ lookup('file', lookup('env', 'HOME') ~ '/.aap-lab/deploy_key') }}"
+        - name: eda-registry-redhat
+          type: Container Registry
+          inputs:
+            host: registry.redhat.io
+            # Make keeps the single quotes .env needs for the "|" (bash strips them): remove them.
+            username: "{{ lookup('env', 'REDHAT_REGISTRY_USERNAME') | regex_replace(\"^'|'$\", '') }}"
+            password: "{{ lookup('env', 'REDHAT_REGISTRY_PASSWORD') }}"
+            verify_ssl: true
+        - name: eda-controller
+          type: Red Hat Ansible Automation Platform
+          inputs:
+            host: "{{ aap_url }}/api/controller/"
+            username: eda-svc
+            password: "{{ lookup('env', 'USER_PASSWORD_EDA') }}"
+            verify_ssl: false
+        - name: eda-token-servicio-caido
+          type: Token Event Stream
+          inputs:
+            auth_type: token
+            token: "{{ eda_token }}"
+            http_header_key: Authorization
+      loop_control:
+        label: "{{ item.name }}"
+      no_log: true
+
+    # ---------- project, decision environment, event stream ----------
+    - name: EDA project (rulebooks from the private repo)
+      ansible.eda.project:
+        name: aap-poc-eda
+        url: "{{ aap_project.scm_url }}"
+        scm_branch: "{{ aap_project.scm_branch }}"
+        credential: eda-github-deploy-key
+        organization_name: "{{ aap_org }}"
+        sync: true
+        wait: true
+
+    - name: Decision environment (supported image of AAP 2.7)
+      ansible.eda.decision_environment:
+        name: de-supported
+        image_url: registry.redhat.io/ansible-automation-platform-27/de-supported-rhel9:latest
+        credential: eda-registry-redhat
+        organization_name: "{{ aap_org }}"
+
+    - name: Event stream for service outages
+      ansible.eda.event_stream:
+        name: servicio-caido
+        credential_name: eda-token-servicio-caido
+        organization_name: "{{ aap_org }}"
+        forward_events: true
+
+    # ---------- activation ----------
+    - name: Rulebook activation bound to the event stream
+      ansible.eda.rulebook_activation:
+        name: remediacion-servicio
+        description: "Case 6: service down -> remediar-servicio"
+        project_name: aap-poc-eda
+        rulebook_name: service-down.yml
+        decision_environment_name: de-supported
+        eda_credentials: [eda-controller]
+        organization_name: "{{ aap_org }}"
+        event_streams:
+          - event_stream: servicio-caido
+            source_name: service_events
+        restart_policy: always
+        enabled: true
+
+# Controller side: the app-baseline job installs nginx + the watchdog, receiving the
+# event stream URL, auth header and CA through a custom credential (never in the repo).
+- name: Configure controller objects for the EDA use case
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/objects.yml
+  vars:
+    aap_url: "https://{{ lookup('env', 'AAP_HOST') }}"
+    eda_token: "{{ lookup('file', lookup('env', 'HOME') ~ '/.aap-lab/eda-token') }}"
+  tasks:
+    - name: Event stream URL as published by EDA
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/eda/v1/event-streams/?name=servicio-caido"
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: stream
+
+    # Nodes have no route to the public IP; they reach the gateway on its private IP
+    # (which is in the certificate SAN, so TLS verification still works).
+    - name: Internal URL for the managed nodes
+      ansible.builtin.set_fact:
+        stream_url_internal: "{{ stream.json.results[0].url | regex_replace('^https://[^/]+', 'https://' ~ aap_internal_ip) }}"
+
+    - name: Custom credential type that injects the event stream settings
+      ansible.controller.credential_type:
+        name: EDA Event Stream
+        description: URL, authentication header and CA to send events to an EDA event stream
+        kind: cloud
+        inputs:
+          fields:
+            - {id: url, type: string, label: Event stream URL}
+            - {id: auth_header, type: string, label: Authorization header line, secret: true}
+            - {id: ca_cert, type: string, label: CA certificate (PEM), multiline: true}
+          required: [url, auth_header, ca_cert]
+        injectors:
+          extra_vars:
+            eda_event_stream_url: "{{ '{{' }} url {{ '}}' }}"
+            eda_auth_header: "{{ '{{' }} auth_header {{ '}}' }}"
+            eda_ca_cert: "{{ '{{' }} ca_cert {{ '}}' }}"
+
+    - name: Event stream credential for the watchdog
+      ansible.controller.credential:
+        name: eda-event-stream-servicio-caido
+        organization: "{{ aap_org }}"
+        credential_type: EDA Event Stream
+        inputs:
+          url: "{{ stream_url_internal }}"
+          auth_header: "Authorization: {{ eda_token }}"
+          ca_cert: "{{ lookup('file', lookup('env', 'HOME') ~ '/.aap-lab/aap-ca.crt') }}"
+      no_log: true
+
+    - name: Job template that installs nginx and the outage watchdog
+      ansible.controller.job_template:
+        name: app-baseline
+        description: "Case 6: nginx plus a watchdog that reports outages to Event-Driven Ansible"
+        organization: "{{ aap_org }}"
+        project: "{{ aap_project.name }}"
+        playbook: playbooks/app-baseline.yml
+        inventory: "{{ aap_inventory.name }}"
+        credentials: [maquina-nodos, eda-event-stream-servicio-caido]
+        execution_environment: "{{ aap_ee.name }}"

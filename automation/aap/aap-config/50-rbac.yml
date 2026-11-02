@@ -1,0 +1,42 @@
+# Case 4: RBAC by team (least privilege, object-level roles). Runs last because it
+# references objects created by the previous playbooks.
+- name: Configure RBAC
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/objects.yml
+  module_defaults:
+    group/ansible.platform.gateway:
+      aap_hostname: "https://{{ lookup('env', 'AAP_HOST') }}"
+      aap_username: admin
+      aap_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      aap_validate_certs: false
+  tasks:
+    - name: Users are members of the organization
+      ansible.platform.role_user_assignment:
+        role_definition: Organization Member
+        user: "{{ item.user }}"
+        object_ids: ["{{ aap_org }}"]
+      loop: "{{ aap_team_members }}"
+      loop_control:
+        label: "{{ item.user }}"
+
+    - name: Users are members of their team
+      ansible.platform.role_user_assignment:
+        role_definition: Team Member
+        user: "{{ item.user }}"
+        object_ids: ["{{ item.team }}"]
+      loop: "{{ aap_team_members }}"
+      loop_control:
+        label: "{{ item.user }} -> {{ item.team }}"
+
+    - name: Team roles on organization and automation objects
+      ansible.platform.role_team_assignment:
+        role_definition: "{{ item.role }}"
+        team: "{{ item.team }}"
+        assignment_objects: "{{ item.objects | map('combine', {'organization': aap_org} if item.objects[0].type != 'organizations' else {}) | list }}"
+        state: "{{ item.state | default('present') }}"
+      loop: "{{ aap_team_roles }}"
+      loop_control:
+        label: "{{ item.team }}: {{ item.role }} ({{ item.state | default('present') }})"

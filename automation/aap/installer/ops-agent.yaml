@@ -1,0 +1,10 @@
+# Google Ops Agent: ship the systemd journal (includes the AAP Podman containers,
+# which log to journald) to Cloud Logging.
+logging:
+  receivers:
+    journald:
+      type: systemd_journald
+  service:
+    pipelines:
+      journald_pipeline:
+        receivers: [journald]

@@ -1,0 +1,88 @@
+# Case 6: stop nginx on a node -> watchdog posts to the event stream -> EDA rule ->
+# remediar-servicio job -> nginx active again. Also: the event stream rejects
+# requests without the token.
+# Run: make verify-eda
+- name: Verify Event-Driven remediation
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    api: "https://{{ lookup('env', 'AAP_HOST') }}/api/controller/v2"
+    eda: "https://{{ lookup('env', 'AAP_HOST') }}/api/eda/v1"
+    target: rhel-dev-01
+    admin: &admin
+      user: admin
+      password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      force_basic_auth: true
+      validate_certs: false
+  tasks:
+    - name: Install nginx and the watchdog (app-baseline)
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: app-baseline}
+    - name: Keep baseline result
+      ansible.builtin.set_fact: {baseline_status: "{{ launched.json.status }}"}
+
+    - name: Rulebook activation is running
+      ansible.builtin.uri:
+        url: "{{ eda }}/activations/?name=remediacion-servicio"
+        <<: *admin
+      register: activation
+      until: activation.json.results[0].status | default('') == 'running'
+      retries: 30
+      delay: 10
+
+    - name: Event stream definition
+      ansible.builtin.uri:
+        url: "{{ eda }}/event-streams/?name=servicio-caido"
+        <<: *admin
+      register: stream
+
+    - name: The event stream rejects requests without the token
+      ansible.builtin.uri:
+        url: "{{ stream.json.results[0].url }}"
+        method: POST
+        body_format: json
+        body: {alert: service_down, host: "{{ target }}", service: nginx}
+        validate_certs: false
+        status_code: [400, 401, 403]   # 400 = "Authorization header is missing"
+
+    - name: Mark the start of the experiment
+      ansible.builtin.set_fact:
+        t0: "{{ now(utc=true).strftime('%Y-%m-%dT%H:%M:%S') }}"
+
+    - name: Break nginx on the node
+      ansible.builtin.command:
+        argv: [bash, scripts/iap-ssh.sh, "{{ target }}", sudo systemctl stop nginx]
+        chdir: "{{ playbook_dir }}/.."
+      changed_when: true
+
+    - name: Wait for an EDA-launched remediation on the node
+      ansible.builtin.uri:
+        url: "{{ api }}/jobs/?name=remediar-servicio&created__gt={{ t0 }}&order_by=-id"
+        <<: *admin
+      register: remediation
+      until: remediation.json.results | selectattr('status', 'equalto', 'successful') | list | length > 0
+      retries: 36
+      delay: 10
+
+    - name: Nginx state after remediation
+      ansible.builtin.command:
+        argv: [bash, scripts/iap-ssh.sh, "{{ target }}", systemctl is-active nginx]
+        chdir: "{{ playbook_dir }}/.."
+      register: nginx_state
+      changed_when: false
+      failed_when: false
+
+    - name: Assert remediation
+      vars:
+        job: "{{ remediation.json.results | selectattr('status', 'equalto', 'successful') | first }}"
+      ansible.builtin.assert:
+        that:
+          - baseline_status == 'successful'
+          - nginx_state.stdout_lines[-1] == 'active'
+          - job.summary_fields.created_by.username | default('') == 'eda-svc'
+        fail_msg: "baseline={{ baseline_status }} nginx={{ nginx_state.stdout_lines | default(['?']) | last }}"
+        success_msg: >-
+          EDA OK: nginx stopped at {{ t0 }}Z on {{ target }}; remediar-servicio #{{ job.id }}
+          launched by {{ job.summary_fields.created_by.username | default('?') }} finished {{ job.finished }};
+          nginx is {{ nginx_state.stdout_lines[-1] }}; stream rejects unauthenticated posts

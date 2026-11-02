@@ -1,0 +1,104 @@
+# CIS RHEL 9 L1 low-risk baseline. Each block is tagged with the CIS area it covers.
+# Never touches SSH key authentication of the automation user.
+
+- name: Password quality - minimum length
+  ansible.builtin.lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: '^\s*#?\s*minlen\s*='
+    line: "minlen = {{ cis_baseline_pass_min_len }}"
+  tags: [cis, cis_passwords]
+
+- name: Password aging - maximum days
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: '^\s*PASS_MAX_DAYS'
+    line: "PASS_MAX_DAYS\t{{ cis_baseline_pass_max_days }}"
+  tags: [cis, cis_passwords]
+
+- name: Login banners
+  ansible.builtin.copy:
+    dest: "{{ item }}"
+    content: "{{ cis_baseline_banner }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - /etc/issue
+    - /etc/issue.net
+  tags: [cis, cis_baseline_banner]
+
+- name: SSH daemon hardening drop-in (loaded before cloud defaults)
+  ansible.builtin.copy:
+    dest: "{{ cis_baseline_sshd_dropin }}"
+    content: |
+      # Managed by Ansible (cis_baseline)
+      {% for key, value in cis_baseline_sshd_settings.items() %}
+      {{ key }} {{ value }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: "0600"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
+  tags: [cis, cis_ssh]
+
+- name: Audit daemon installed
+  ansible.builtin.dnf:
+    name: audit
+    state: present
+  tags: [cis, cis_audit]
+
+- name: Audit daemon enabled and running
+  ansible.builtin.systemd_service:
+    name: auditd
+    enabled: true
+    state: started
+  tags: [cis, cis_audit]
+
+- name: Disable unused filesystem kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/cis-filesystems.conf
+    content: |
+      # Managed by Ansible (cis_baseline)
+      {% for mod in cis_baseline_disabled_fs_modules %}
+      install {{ mod }} /bin/false
+      blacklist {{ mod }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [cis, cis_filesystems]
+
+- name: Kernel network and memory parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/60-cis.conf
+    state: present
+    reload: true
+  loop: "{{ cis_baseline_sysctl | dict2items }}"
+  tags: [cis, cis_baseline_sysctl]
+
+- name: Restrict core dumps
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/60-cis-core.conf
+    content: "* hard core 0\n"
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [cis, cis_baseline_sysctl]
+
+- name: Cron configuration permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/crontab, mode: "0600" }
+    - { path: /etc/cron.d, mode: "0700" }
+    - { path: /etc/cron.daily, mode: "0700" }
+    - { path: /etc/cron.hourly, mode: "0700" }
+    - { path: /etc/cron.weekly, mode: "0700" }
+    - { path: /etc/cron.monthly, mode: "0700" }
+  tags: [cis, cis_cron]

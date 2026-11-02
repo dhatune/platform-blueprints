@@ -1,0 +1,8 @@
+# Certified collections used to configure AAP as code (Red Hat Automation Hub).
+collections:
+  - name: ansible.platform      # gateway: organizations, teams, users, role assignments
+    version: ">=2.7.0,<2.8.0"
+  - name: ansible.controller    # controller: credentials, projects, inventories, templates, workflows
+    version: ">=4.8.0,<4.9.0"
+  - name: ansible.eda           # EDA: projects, decision environments, event streams, activations
+    version: ">=2.0.0"

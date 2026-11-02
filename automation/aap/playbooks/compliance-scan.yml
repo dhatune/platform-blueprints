@@ -1,0 +1,101 @@
+# Case 2: OpenSCAP scan against CIS RHEL 9 L1 (Server) and upload the HTML report
+# to the evidence bucket using the node's own service account (keyless, via metadata).
+# Job template: compliance-scan. Extra vars: scan_label (before|after), evidence_bucket.
+- name: CIS compliance scan with OpenSCAP
+  hosts: os_rhel
+  become: true
+  gather_facts: true
+  vars:
+    scan_label: before
+    evidence_bucket: ""
+    scap_profile: xccdf_org.ssgproject.content_profile_cis_server_l1
+    scap_content: /usr/share/xml/scap/ssg/content/ssg-rhel9-ds.xml
+    report_dir: /var/log/compliance
+    stamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    report_base: "{{ report_dir }}/{{ stamp }}-{{ scan_label }}"
+  tasks:
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - scan_label in ['before', 'after']
+          - evidence_bucket | length > 0
+        fail_msg: "scan_label must be before|after and evidence_bucket is required"
+
+    - name: OpenSCAP scanner and SCAP Security Guide installed
+      ansible.builtin.dnf:
+        name: [openscap-scanner, scap-security-guide]
+        state: present
+
+    - name: Report directory
+      ansible.builtin.file:
+        path: "{{ report_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    # rc 0 = all rules pass, rc 2 = some rules fail (expected), anything else = error.
+    - name: Run the scan
+      ansible.builtin.command:
+        argv:
+          - oscap
+          - xccdf
+          - eval
+          - --profile
+          - "{{ scap_profile }}"
+          - --results
+          - "{{ report_base }}-results.xml"
+          - --report
+          - "{{ report_base }}-report.html"
+          - "{{ scap_content }}"
+      register: oscap
+      changed_when: false
+      failed_when: oscap.rc not in [0, 2]
+
+    - name: Read the results
+      ansible.builtin.slurp:
+        src: "{{ report_base }}-results.xml"
+      register: results_xml
+
+    - name: Extract the CIS score
+      ansible.builtin.set_fact:
+        compliance_score: >-
+          {{ (results_xml.content | b64decode
+              | regex_search('<score[^>]*urn:xccdf:scoring:default[^>]*>([0-9.]+)</score>', '\1')
+              | first) | float | round(2) }}
+
+    - name: Short-lived access token of the node service account (metadata server)
+      ansible.builtin.uri:
+        url: http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token
+        headers:
+          Metadata-Flavor: Google
+        return_content: true
+      register: sa_token
+      no_log: true
+
+    - name: Upload the HTML report to the evidence bucket
+      ansible.builtin.uri:
+        url: >-
+          https://storage.googleapis.com/upload/storage/v1/b/{{ evidence_bucket }}/o?uploadType=media&name={{
+          ('compliance/' ~ inventory_hostname ~ '/' ~ stamp ~ '-' ~ scan_label ~ '.html') | urlencode }}
+        method: POST
+        src: "{{ report_base }}-report.html"
+        remote_src: true
+        headers:
+          Authorization: "Bearer {{ sa_token.json.access_token }}"
+          Content-Type: text/html
+        status_code: [200]
+      register: upload
+      no_log: true
+
+    - name: Structured log line for traceability
+      ansible.builtin.debug:
+        msg: >-
+          COMPLIANCE_SCORE host={{ inventory_hostname }} label={{ scan_label }}
+          score={{ compliance_score }} profile={{ scap_profile }}
+          evidence=gs://{{ evidence_bucket }}/{{ upload.json.name }}
+
+    - name: Publish the score as a job artifact
+      ansible.builtin.set_stats:
+        data: "{{ {'compliance_score_' ~ inventory_hostname | replace('-', '_') ~ '_' ~ scan_label: compliance_score} }}"
+        per_host: false

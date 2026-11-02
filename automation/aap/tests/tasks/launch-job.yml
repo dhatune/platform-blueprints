@@ -1,0 +1,45 @@
+# Reusable: launch a job template (or workflow) through the API and wait for it.
+# Inputs:  jt_name, jt_kind (job_templates|workflow_job_templates, default job_templates),
+#          jt_extra_vars (dict, optional), jt_limit (optional),
+#          jt_user / jt_password (optional, default admin), jt_wait (default true)
+# Output:  launched (job JSON after it finished, or right after launch when jt_wait=false)
+- name: "Find {{ jt_name }}"
+  ansible.builtin.uri:
+    url: "{{ api }}/{{ jt_kind | default('job_templates') }}/?name={{ jt_name }}"
+    user: "{{ jt_user | default('admin') }}"
+    password: "{{ jt_password | default(lookup('env', 'AAP_ADMIN_PASSWORD')) }}"
+    force_basic_auth: true
+    validate_certs: false
+  register: jt
+  no_log: true
+
+- name: "Launch {{ jt_name }}"
+  ansible.builtin.uri:
+    url: "{{ api }}/{{ jt_kind | default('job_templates') }}/{{ jt.json.results[0].id }}/launch/"
+    method: POST
+    body_format: json
+    body: "{{ {'extra_vars': jt_extra_vars | default({})} | combine({'limit': jt_limit} if jt_limit is defined else {}) }}"
+    status_code: [201]
+    user: "{{ jt_user | default('admin') }}"
+    password: "{{ jt_password | default(lookup('env', 'AAP_ADMIN_PASSWORD')) }}"
+    force_basic_auth: true
+    validate_certs: false
+  register: launch
+  no_log: true
+
+- name: "Wait for {{ jt_name }}"
+  ansible.builtin.uri:
+    url: "{{ api }}/{{ 'workflow_jobs' if jt_kind | default('') == 'workflow_job_templates' else 'jobs' }}/{{ launch.json.id }}/"
+    user: admin
+    password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+    force_basic_auth: true
+    validate_certs: false
+  register: launched
+  until: not (jt_wait | default(true)) or launched.json.status in ['successful', 'failed', 'error', 'canceled']
+  retries: 120
+  delay: 10
+  no_log: true
+
+- name: "Result of {{ jt_name }}"
+  ansible.builtin.debug:
+    msg: "{{ jt_name }} #{{ launched.json.id }} -> {{ launched.json.status }}"

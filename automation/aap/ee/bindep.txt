@@ -1,0 +1,2 @@
+# System packages needed inside the EE (bindep format).
+git [platform:rpm]

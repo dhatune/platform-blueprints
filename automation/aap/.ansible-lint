@@ -1,0 +1,8 @@
+profile: production
+exclude_paths:
+  - .venv/
+  - .collections/
+  - infra/
+  - docs/
+  - tools/
+offline: true
