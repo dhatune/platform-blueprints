@@ -263,8 +263,8 @@ verified end to end             7 cases against a real project and a trial
                                 subscription, then destroyed
 ```
 
-The README lists the thirty-five failures hit while building it in the form
-that saves time: what happens and what to do.
+Thirty-five failures were hit while building it. Its README keeps the fifteen
+that cost the most time, each as what happens and what to do.
 
 → [Read it](automation/aap/)
 
