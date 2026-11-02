@@ -1,0 +1,37 @@
+# Verify that the custom Execution Environment is published in the private automation hub.
+# Run: make verify-ee
+- name: Verify custom EE in private hub
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aap_url: "https://{{ lookup('env', 'AAP_HOST') }}"
+    ee_name: ee-aap-poc
+    ee_tag: "1.0.0"
+  tasks:
+    - name: List EE repositories in the private hub
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/galaxy/v3/plugin/execution-environments/repositories/?name={{ ee_name }}"
+        validate_certs: false
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+      register: repos
+
+    - name: List tags of the EE repository
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/galaxy/v3/plugin/execution-environments/repositories/{{ ee_name }}/_content/tags/"
+        validate_certs: false
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+      register: tags
+      when: repos.json.meta.count | default(0) > 0
+
+    - name: Assert EE repository and tag exist
+      ansible.builtin.assert:
+        that:
+          - repos.json.meta.count | default(0) == 1
+          - ee_tag in (tags.json.data | default([]) | map(attribute='name') | list)
+        fail_msg: "EE {{ ee_name }}:{{ ee_tag }} not found in the private hub"
+        success_msg: "EE {{ ee_name }}:{{ ee_tag }} published in the private hub"

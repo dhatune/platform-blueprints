@@ -1,0 +1,66 @@
+# Platform gateway objects: organization, teams and users.
+# Connection goes through module_defaults (rendered as task args). ansible.platform
+# 2.7.20260930 ignores the AAP_* env vars its docs mention, and reads play vars
+# without rendering Jinja. Secrets never go on the command line.
+- name: Configure platform gateway
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/objects.yml
+  module_defaults:
+    group/ansible.platform.gateway:
+      aap_hostname: "https://{{ lookup('env', 'AAP_HOST') }}"
+      aap_username: admin
+      aap_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      aap_validate_certs: false
+  tasks:
+    - name: Organization
+      ansible.platform.organization:
+        name: "{{ aap_org }}"
+        description: AAP laboratory organization
+
+    - name: Teams
+      ansible.platform.team:
+        name: "{{ item.name }}"
+        description: "{{ item.description }}"
+        organization: "{{ aap_org }}"
+      loop: "{{ aap_teams }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Look up which demo users already exist
+      ansible.builtin.uri:
+        url: "https://{{ lookup('env', 'AAP_HOST') }}/api/gateway/v1/users/?username__in={{ aap_users | map(attribute='username') | join(',') }}"
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: existing_users
+
+    # ansible.platform.user reports "changed" on every run when it receives a password,
+    # even with the update-secrets flag off. Passwords are therefore only sent on creation.
+    - name: Create missing users (initial password from .env)
+      ansible.platform.user:
+        username: "{{ item.username }}"
+        first_name: "{{ item.first_name }}"
+        email: "{{ item.email }}"
+        password: "{{ lookup('env', item.pass_from_env) }}"
+        organizations:
+          - "{{ aap_org }}"
+      loop: "{{ aap_users }}"
+      loop_control:
+        label: "{{ item.username }}"
+      when: item.username not in (existing_users.json.results | map(attribute='username'))
+      no_log: true
+
+    # Profile only: the "organizations" parameter also reports "changed" on every run,
+    # so membership is set on creation and managed afterwards with role assignments.
+    - name: Keep profile of all users
+      ansible.platform.user:
+        username: "{{ item.username }}"
+        first_name: "{{ item.first_name }}"
+        email: "{{ item.email }}"
+      loop: "{{ aap_users }}"
+      loop_control:
+        label: "{{ item.username }}"

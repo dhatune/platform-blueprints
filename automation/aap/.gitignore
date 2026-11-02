@@ -1,0 +1,6 @@
+# Local tooling and generated files for the AAP laboratory.
+.collections/
+installer/.rendered/
+context/
+*.tar.gz
+*.zip

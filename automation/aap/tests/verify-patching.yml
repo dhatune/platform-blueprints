@@ -1,0 +1,166 @@
+# Case 3: controlled patching with approval and rollback.
+#   1) happy path: op1 launches, op1 cannot approve, sec1 approves, dev+prod patched
+#   2) forced failure in dev: rollback node runs, production is never reached
+#   3) rollback with no new dnf transaction undoes nothing (Review Focus #1)
+# Run: make verify-patching
+- name: Verify controlled patching workflow
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    api: "https://{{ lookup('env', 'AAP_HOST') }}/api/controller/v2"
+    admin_auth: &admin
+      user: admin
+      password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      force_basic_auth: true
+      validate_certs: false
+  tasks:
+    # ---------- 1) happy path ----------
+    - name: Operaciones (op1) launches the patch workflow
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars:
+        jt_name: parcheo-controlado
+        jt_kind: workflow_job_templates
+        jt_user: op1
+        jt_password: "{{ lookup('env', 'USER_PASSWORD_OP1') }}"
+        jt_extra_vars: {patch_scope: security, patch_force_fail: false}
+        jt_wait: false
+    - name: Keep happy-path workflow id
+      ansible.builtin.set_fact: {wf_ok: "{{ launched.json.id }}"}
+
+    # Poll the approval node; stop early if the workflow finishes without reaching it.
+    - name: Wait until the workflow reaches the approval node (or ends)
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_jobs/{{ wf_ok }}/workflow_nodes/?page_size=50"
+        <<: *admin
+      register: ok_nodes
+      until: >-
+        (ok_nodes.json.results | selectattr('identifier', 'equalto', 'approve-prod') | first).summary_fields.job is defined
+        or (ok_nodes.json.results | selectattr('summary_fields.job.status', 'defined')
+            | selectattr('summary_fields.job.status', 'in', ['failed', 'error']) | list | length > 0
+            and (ok_nodes.json.results | selectattr('summary_fields.job.status', 'defined')
+                 | selectattr('summary_fields.job.status', 'in', ['pending', 'waiting', 'running']) | list | length == 0))
+      retries: 60
+      delay: 10
+      no_log: true
+
+    - name: Fail fast if the approval was never reached
+      vars:
+        approve_node: "{{ ok_nodes.json.results | selectattr('identifier', 'equalto', 'approve-prod') | first }}"
+        failed_nodes: >-
+          {{ ok_nodes.json.results | selectattr('summary_fields.job.status', 'defined')
+             | selectattr('summary_fields.job.status', 'in', ['failed', 'error']) | map(attribute='identifier') | list }}
+      ansible.builtin.assert:
+        that: approve_node.summary_fields.job is defined
+        fail_msg: "Workflow #{{ wf_ok }} never reached the approval; failed nodes: {{ failed_nodes }}"
+        quiet: true
+
+    - name: Approval id
+      ansible.builtin.set_fact:
+        approval_id: "{{ (ok_nodes.json.results | selectattr('identifier', 'equalto', 'approve-prod') | first).summary_fields.job.id }}"
+
+    - name: Operaciones (op1) tries to approve -> forbidden
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_approvals/{{ approval_id }}/approve/"
+        method: POST
+        user: op1
+        password: "{{ lookup('env', 'USER_PASSWORD_OP1') }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [403, 404]
+
+    - name: Seguridad (sec1) approves
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_approvals/{{ approval_id }}/approve/"
+        method: POST
+        user: sec1
+        password: "{{ lookup('env', 'USER_PASSWORD_SEC1') }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [204]
+
+    - name: Wait for the happy-path workflow
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_jobs/{{ wf_ok }}/"
+        <<: *admin
+      register: wf_ok_job
+      until: wf_ok_job.json.status in ['successful', 'failed', 'error', 'canceled']
+      retries: 90
+      delay: 10
+
+    - name: Approval record
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_approvals/{{ approval_id }}/"
+        <<: *admin
+      register: approval
+
+    # ---------- 2) forced failure ----------
+    # Make sure a reversible update exists: downgrade a RHEL package first, so the
+    # patch creates a transaction the rollback can really undo.
+    - name: Prepare a pending RHEL update on rhel-dev-01 (downgrade tzdata)
+      ansible.builtin.command:
+        argv: [bash, scripts/iap-ssh.sh, rhel-dev-01, "sudo dnf -y -q downgrade tzdata"]
+        chdir: "{{ playbook_dir }}/.."
+      changed_when: true
+
+    - name: Launch with a forced failure in dev (scope all, to create a real transaction)
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars:
+        jt_name: parcheo-controlado
+        jt_kind: workflow_job_templates
+        jt_extra_vars: {patch_scope: all, patch_force_fail: true}
+    - name: Keep forced-failure workflow id
+      ansible.builtin.set_fact: {wf_fail: "{{ launched.json.id }}"}
+
+    - name: Nodes of the forced-failure run
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_jobs/{{ wf_fail }}/workflow_nodes/?page_size=50"
+        <<: *admin
+      register: fail_nodes
+
+    - name: Jobs that ran in the forced-failure run
+      ansible.builtin.set_fact:
+        ran: >-
+          {{ fail_nodes.json.results | selectattr('summary_fields.job', 'defined')
+             | items2dict(key_name='identifier', value_name='summary_fields') }}
+
+    - name: Output of the rollback job
+      ansible.builtin.uri:
+        url: "{{ api }}/jobs/{{ ran['rollback-dev'].job.id }}/stdout/?format=txt"
+        <<: *admin
+        return_content: true
+      register: rollback_out
+      when: "'rollback-dev' in ran"
+
+    # ---------- 3) no new transaction -> nothing undone ----------
+    - name: Pre-check on rhel-dev-01 (records the current transaction)
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: patch-precheck, jt_limit: rhel-dev-01}
+    - name: Rollback right away (no new transaction since pre-check)
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: patch-rollback, jt_limit: rhel-dev-01}
+    - name: Output of that rollback
+      ansible.builtin.uri:
+        url: "{{ api }}/jobs/{{ launched.json.id }}/stdout/?format=txt"
+        <<: *admin
+        return_content: true
+      register: noop_out
+
+    - name: Assert the three scenarios
+      ansible.builtin.assert:
+        that:
+          - wf_ok_job.json.status == 'successful'
+          - approval.json.status == 'successful'
+          - approval.json.summary_fields.approved_or_denied_by.username == 'sec1'
+          - "'rollback-dev' in ran and ran['rollback-dev'].job.status == 'successful'"
+          - "'PATCH_ROLLBACK' in rollback_out.content and 'undone=' in rollback_out.content"
+          - "'precheck-prod' not in ran and 'apply-prod' not in ran"
+          - "'nothing to roll back' in noop_out.content"
+        fail_msg: >-
+          happy={{ wf_ok_job.json.status }} approval={{ approval.json.status }}
+          by={{ approval.json.summary_fields.approved_or_denied_by.username | default('-') }}
+          forced_nodes={{ ran.keys() | list }} noop_ok={{ 'nothing to roll back' in noop_out.content }}
+        success_msg: >-
+          Patching OK: workflow #{{ wf_ok }} approved by sec1 (op1 got 403) and completed dev+prod;
+          forced failure #{{ wf_fail }} rolled back dev and never reached prod;
+          rollback without new transaction undid nothing

@@ -1,0 +1,5 @@
+ansible-core==2.18.*
+ansible-lint>=25.1
+yamllint>=1.35
+ansible-builder>=3.1
+requests>=2.31            # required by ansible.platform / ansible.controller on the control node

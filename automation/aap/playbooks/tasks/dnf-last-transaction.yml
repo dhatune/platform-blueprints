@@ -1,0 +1,14 @@
+# Shared task: set dnf_last_id to the ID of the most recent dnf transaction (0 if none).
+- name: Read dnf history
+  ansible.builtin.command:
+    cmd: dnf -q history list
+  register: dnf_history
+  changed_when: false
+
+- name: Extract the last transaction ID
+  ansible.builtin.set_fact:
+    dnf_last_id: >-
+      {{ (dnf_history.stdout_lines
+          | select('match', '^\s*[0-9]+\s*\|')
+          | map('regex_replace', '^\s*([0-9]+).*$', '\1')
+          | map('int') | list | max) | default(0, true) | int }}

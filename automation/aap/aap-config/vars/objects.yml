@@ -1,0 +1,119 @@
+# Desired state of AAP for the PoC. Secrets are NOT here: they are read at run
+# time from environment variables (.env) or from files outside the repo.
+
+aap_org: AAP-PoC
+
+aap_teams:
+  - name: Operaciones
+    description: Runs approved automation
+  - name: Seguridad
+    description: Approves changes and runs compliance
+  - name: Auditoria
+    description: Read-only access to the whole organization
+
+aap_users:
+  - username: op1
+    first_name: Operador
+    email: op1@example.org
+    pass_from_env: USER_PASSWORD_OP1
+  - username: sec1
+    first_name: Seguridad
+    email: sec1@example.org
+    pass_from_env: USER_PASSWORD_SEC1
+  - username: aud1
+    first_name: Auditor
+    email: aud1@example.org
+    pass_from_env: USER_PASSWORD_AUD1
+
+aap_registry_host: "{{ lookup('env', 'AAP_HOST') }}"
+
+aap_ee:
+  name: ee-aap-poc
+  image: "{{ aap_registry_host }}/ee-aap-poc:1.0.0"
+  description: EE de la PoC (GCP, POSIX, general)
+
+aap_project:
+  name: aap-poc
+  scm_url: "{{ lookup('env', 'AAP_PROJECT_SCM_URL') }}"
+  scm_branch: main
+
+aap_inventory:
+  name: gcp-lab
+  source_name: gcp-compute
+  source_path: inventories/gcp_compute.yml
+
+aap_evidence_bucket: "{{ lookup('env', 'PROJECT_ID') }}-evidence"
+
+# Job templates. All run in ee-aap-poc against the GCP inventory with maquina-nodos,
+# except export-auditoria (localhost, read-only API credential of aud1).
+aap_job_templates:
+  - name: compliance-scan
+    playbook: playbooks/compliance-scan.yml
+    description: "Case 2: OpenSCAP CIS scan (scan_label before|after) with evidence in the bucket"
+    extra_vars: {scan_label: before}
+    ask_variables_on_launch: true
+    ask_limit_on_launch: true
+  - name: hardening-cis
+    playbook: playbooks/harden.yml
+    description: "Case 2: applies the CIS baseline (role cis_baseline)"
+    ask_limit_on_launch: true
+  - name: patch-precheck
+    playbook: playbooks/patch-precheck.yml
+    description: "Case 3: pre-checks and record of the dnf transaction"
+    ask_limit_on_launch: true
+  - name: patch-apply
+    playbook: playbooks/patch-apply.yml
+    description: "Case 3: applies patches (patch_scope, patch_force_fail)"
+    ask_limit_on_launch: true
+    ask_variables_on_launch: true
+  - name: patch-validate
+    playbook: playbooks/patch-validate.yml
+    description: "Case 3: validates critical services after patching"
+    ask_limit_on_launch: true
+  - name: patch-rollback
+    playbook: playbooks/patch-rollback.yml
+    description: "Case 3: undoes only the transaction created by the patch"
+    ask_limit_on_launch: true
+  - name: remediar-servicio
+    playbook: playbooks/remediate-service.yml
+    description: "Case 6: launched by Event-Driven Ansible (target_host, service)"
+    ask_variables_on_launch: true
+
+# RBAC (case 4): segregation of duties.
+# Operaciones runs approved automation, Seguridad approves and runs compliance,
+# Auditoria only reads (plus the audit export).
+aap_team_members:
+  - {user: op1, team: Operaciones}
+  - {user: sec1, team: Seguridad}
+  - {user: aud1, team: Auditoria}
+
+aap_team_roles:
+  - team: Operaciones
+    role: WorkflowJobTemplate Execute
+    objects: [{name: parcheo-controlado, type: awx.workflowjobtemplate}]
+  - team: Operaciones
+    role: JobTemplate Execute
+    objects: [{name: app-baseline, type: awx.jobtemplate}]
+  - team: Seguridad
+    role: WorkflowJobTemplate Approve
+    objects: [{name: parcheo-controlado, type: awx.workflowjobtemplate}]
+  - team: Seguridad
+    role: JobTemplate Execute
+    objects:
+      - {name: compliance-scan, type: awx.jobtemplate}
+      - {name: hardening-cis, type: awx.jobtemplate}
+  # "Organization Audit" grants read access to controller objects. The similarly named
+  # "Organization Auditor" does NOT (error 28), so it is explicitly removed.
+  - team: Auditoria
+    role: Organization Audit
+    objects: [{name: AAP-PoC, type: organizations}]
+  - team: Auditoria
+    role: Organization Auditor
+    objects: [{name: AAP-PoC, type: organizations}]
+    state: absent
+  - team: Auditoria
+    role: JobTemplate Execute
+    objects: [{name: export-auditoria, type: awx.jobtemplate}]
+
+# Internal address of the platform for traffic from managed nodes (EDA event streams).
+aap_internal_ip: "{{ lookup('env', 'AAP_INTERNAL_IP') }}"

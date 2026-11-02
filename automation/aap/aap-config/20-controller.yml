@@ -1,0 +1,139 @@
+# Automation controller objects: credentials, EE, project and GCP dynamic inventory.
+# Connection: CONTROLLER_HOST / CONTROLLER_USERNAME / CONTROLLER_PASSWORD / CONTROLLER_VERIFY_SSL.
+- name: Configure automation controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/objects.yml
+  vars:
+    ssh_key_path: "{{ lookup('env', 'SSH_KEY_PATH') | expanduser }}"
+    deploy_key_path: "{{ lookup('env', 'HOME') }}/.aap-lab/deploy_key"
+  tasks:
+    - name: Machine credential for managed nodes (user ansible)
+      ansible.controller.credential:
+        name: maquina-nodos
+        organization: "{{ aap_org }}"
+        credential_type: Machine
+        inputs:
+          username: ansible
+          ssh_key_data: "{{ lookup('file', ssh_key_path) }}"
+        update_secrets: false
+      no_log: true
+
+    - name: Source control credential (read-only GitHub deploy key)
+      ansible.controller.credential:
+        name: github-deploy-key
+        organization: "{{ aap_org }}"
+        credential_type: Source Control
+        inputs:
+          ssh_key_data: "{{ lookup('file', deploy_key_path) }}"
+        update_secrets: false
+      no_log: true
+
+    - name: Container registry credential to pull EEs from the private hub
+      ansible.controller.credential:
+        name: hub-registry
+        organization: "{{ aap_org }}"
+        credential_type: Container Registry
+        inputs:
+          host: "{{ aap_registry_host }}"
+          username: admin
+          password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+          verify_ssl: false   # self-signed certificate in the PoC
+        update_secrets: false
+      no_log: true
+
+    - name: Execution environment published in the private hub
+      ansible.controller.execution_environment:
+        name: "{{ aap_ee.name }}"
+        image: "{{ aap_ee.image }}"
+        description: "{{ aap_ee.description }}"
+        organization: "{{ aap_org }}"
+        credential: hub-registry
+        pull: missing
+
+    - name: Project synced from the private GitHub repo
+      ansible.controller.project:
+        name: "{{ aap_project.name }}"
+        organization: "{{ aap_org }}"
+        scm_type: git
+        scm_url: "{{ aap_project.scm_url }}"
+        scm_branch: "{{ aap_project.scm_branch }}"
+        credential: github-deploy-key
+        default_environment: "{{ aap_ee.name }}"
+        scm_update_on_launch: true
+        wait: true
+
+    - name: Inventory
+      ansible.controller.inventory:
+        name: "{{ aap_inventory.name }}"
+        organization: "{{ aap_org }}"
+        description: Dynamic inventory of the GCP project
+
+    - name: GCP inventory source (file from the project, keyless auth)
+      ansible.controller.inventory_source:
+        name: "{{ aap_inventory.source_name }}"
+        inventory: "{{ aap_inventory.name }}"
+        organization: "{{ aap_org }}"
+        source: scm
+        source_project: "{{ aap_project.name }}"
+        source_path: "{{ aap_inventory.source_path }}"
+        execution_environment: "{{ aap_ee.name }}"
+        overwrite: true
+        update_on_launch: true
+
+    # AAP validates playbook paths against the LAST synced revision of the project,
+    # so sync it before creating templates that reference newly pushed playbooks.
+    - name: Sync the project to the latest commit
+      ansible.controller.project_update:
+        name: "{{ aap_project.name }}"
+        organization: "{{ aap_org }}"
+        wait: true
+      changed_when: false
+
+    - name: Read-only API credential for the audit export (user aud1, Organization Auditor)
+      ansible.controller.credential:
+        name: aap-api-auditoria
+        organization: "{{ aap_org }}"
+        credential_type: Red Hat Ansible Automation Platform
+        inputs:
+          host: "https://{{ lookup('env', 'AAP_HOST') }}"
+          username: aud1
+          password: "{{ lookup('env', 'USER_PASSWORD_AUD1') }}"
+          verify_ssl: false
+        update_secrets: false
+      no_log: true
+
+    - name: Job templates on managed nodes
+      ansible.controller.job_template:
+        name: "{{ item.name }}"
+        description: "{{ item.description }}"
+        organization: "{{ aap_org }}"
+        project: "{{ aap_project.name }}"
+        playbook: "{{ item.playbook }}"
+        inventory: "{{ aap_inventory.name }}"
+        credentials: [maquina-nodos]
+        execution_environment: "{{ aap_ee.name }}"
+        extra_vars: "{{ {'evidence_bucket': aap_evidence_bucket} | combine(item.extra_vars | default({})) }}"
+        ask_variables_on_launch: "{{ item.ask_variables_on_launch | default(false) }}"
+        ask_limit_on_launch: "{{ item.ask_limit_on_launch | default(false) }}"
+      loop: "{{ aap_job_templates }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Audit export job template (localhost, read-only API credential)
+      ansible.controller.job_template:
+        name: export-auditoria
+        description: "Case 7: exports jobs and approvals to CSV in the evidence bucket"
+        organization: "{{ aap_org }}"
+        project: "{{ aap_project.name }}"
+        playbook: playbooks/audit-export.yml
+        inventory: "{{ aap_inventory.name }}"
+        # No limit: the play targets the implicit localhost, which is not an inventory host
+        # (a "localhost" limit leaves no hosts, error 35).
+        limit: ""
+        credentials: [aap-api-auditoria]
+        execution_environment: "{{ aap_ee.name }}"
+        extra_vars:
+          evidence_bucket: "{{ aap_evidence_bucket }}"

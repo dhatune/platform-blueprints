@@ -1,0 +1,31 @@
+# Case 6: remediation launched by Event-Driven Ansible. Job template: remediar-servicio.
+# Extra vars (from the event): target_host, service.
+- name: Restart a service reported as down
+  hosts: "{{ target_host | default('none') }}"
+  become: true
+  gather_facts: false
+  vars:
+    allowed_services: [nginx, chronyd]
+  tasks:
+    # Defense in depth: the rulebook filters too, but the job must not trust its input.
+    - name: Service is in the allowlist
+      ansible.builtin.assert:
+        that: service in allowed_services
+        fail_msg: "EDA_REMEDIATION_REJECTED host={{ inventory_hostname }} service={{ service }}"
+
+    - name: Restart the service
+      ansible.builtin.systemd_service:
+        name: "{{ service }}"
+        state: restarted
+
+    - name: Wait until it is active
+      ansible.builtin.systemd_service:
+        name: "{{ service }}"
+      register: svc_state
+      until: svc_state.status.ActiveState == 'active'
+      retries: 5
+      delay: 3
+
+    - name: Structured log line
+      ansible.builtin.debug:
+        msg: "EDA_REMEDIATION host={{ inventory_hostname }} service={{ service }} result={{ svc_state.status.ActiveState }}"

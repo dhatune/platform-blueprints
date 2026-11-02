@@ -1,0 +1,82 @@
+# Case 7: export who ran what and when (jobs + workflow approvals) to the evidence bucket.
+# Job template: export-auditoria. Runs on localhost inside the EE on aap-01.
+# API access: AAP "Red Hat Ansible Automation Platform" credential (injects CONTROLLER_* env vars).
+# Upload: keyless, with the aap-01 service account (bucket-scoped objectCreator).
+- name: Export audit trail
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    evidence_bucket: ""
+    page_size: 200
+    api: "{{ lookup('env', 'CONTROLLER_HOST') | regex_replace('/$', '') }}/api/controller/v2"
+    api_auth: &api_auth
+      user: "{{ lookup('env', 'CONTROLLER_USERNAME') }}"
+      password: "{{ lookup('env', 'CONTROLLER_PASSWORD') }}"
+      force_basic_auth: true
+      validate_certs: "{{ lookup('env', 'CONTROLLER_VERIFY_SSL') | default('false', true) | bool }}"
+    stamp: "{{ ansible_date_time.iso8601_basic_short }}"
+  tasks:
+    - name: Inputs present
+      ansible.builtin.assert:
+        that:
+          - evidence_bucket | length > 0
+          - lookup('env', 'CONTROLLER_HOST') | length > 0
+        fail_msg: "Set evidence_bucket and attach the AAP API credential"
+        quiet: true
+
+    - name: Recent jobs
+      ansible.builtin.uri:
+        url: "{{ api }}/unified_jobs/?order_by=-finished&page_size={{ page_size }}&not__launch_type=sync"
+        <<: *api_auth
+      register: jobs
+      no_log: true
+
+    - name: Workflow approvals
+      ansible.builtin.uri:
+        url: "{{ api }}/workflow_approvals/?order_by=-id&page_size={{ page_size }}"
+        <<: *api_auth
+      register: approvals
+      no_log: true
+
+    - name: Build the CSV
+      ansible.builtin.set_fact:
+        audit_csv: |
+          type,id,name,status,launched_by,approved_or_denied_by,started,finished,limit
+          {% for j in jobs.json.results %}
+          {{ [j.type, j.id, '"' ~ j.name ~ '"', j.status,
+              j.summary_fields.created_by.username | default(j.launch_type), '',
+              j.started | default(''), j.finished | default(''),
+              '"' ~ (j.limit | default('')) ~ '"'] | join(',') }}
+          {% endfor %}
+          {% for a in approvals.json.results %}
+          {{ ['workflow_approval', a.id, '"' ~ a.name ~ '"', a.status, '',
+              a.summary_fields.approved_or_denied_by.username | default(''),
+              a.started | default(''), a.finished | default(''), ''] | join(',') }}
+          {% endfor %}
+
+    - name: Short-lived token of the aap-01 service account (metadata server)
+      ansible.builtin.uri:
+        url: http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token
+        headers:
+          Metadata-Flavor: Google
+      register: sa_token
+      no_log: true
+
+    - name: Upload the CSV to the evidence bucket
+      ansible.builtin.uri:
+        url: "https://storage.googleapis.com/upload/storage/v1/b/{{ evidence_bucket }}/o?uploadType=media&name=audit%2F{{ stamp }}.csv"
+        method: POST
+        body: "{{ audit_csv }}"
+        headers:
+          Authorization: "Bearer {{ sa_token.json.access_token }}"
+          Content-Type: text/csv
+        status_code: [200]
+      register: upload
+      no_log: true
+
+    - name: Structured log line
+      ansible.builtin.debug:
+        msg: >-
+          AUDIT_EXPORT jobs={{ jobs.json.results | length }} approvals={{ approvals.json.results | length }}
+          object=gs://{{ evidence_bucket }}/{{ upload.json.name }}

@@ -1,0 +1,31 @@
+# EXAMPLE (not used by the PoC): AWS EC2 dynamic inventory with the same groups as GCP.
+# In AAP: inventory source of type "Sourced from a Project" pointing to this file,
+# or the built-in "Amazon EC2" source type.
+#
+# Authentication without long-lived keys (preferred order):
+#   1. Execution nodes running in AWS with an IAM instance profile (role with ec2:Describe*).
+#   2. AAP "Amazon Web Services" credential using STS AssumeRole (role_arn) from a
+#      central automation account.
+# Never commit access keys; AAP stores credentials encrypted.
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+
+filters:
+  instance-state-name: running
+  tag:managed_by: ansible-poc
+
+hostnames:
+  - tag:Name
+  - instance-id
+compose:
+  ansible_host: private_ip_address   # execution nodes inside the VPC (or via a hop node)
+
+# Same prefixes as GCP and VMware: env_*, app_*, os_*.
+keyed_groups:
+  - key: tags.env
+    prefix: env
+  - key: tags.app
+    prefix: app
+  - key: tags.os
+    prefix: os

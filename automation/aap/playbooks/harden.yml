@@ -1,0 +1,7 @@
+# Case 2: apply the CIS baseline to RHEL hosts. Job template: hardening-cis.
+- name: Apply CIS baseline
+  hosts: os_rhel
+  become: true
+  gather_facts: true
+  roles:
+    - cis_baseline

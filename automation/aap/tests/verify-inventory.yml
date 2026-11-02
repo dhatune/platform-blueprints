@@ -1,0 +1,87 @@
+# Case 1: AAP scans the GCP project and groups the VMs by label.
+# Launches a sync of the dynamic inventory and checks hosts and groups.
+# Run: make verify-inventory
+- name: Verify GCP dynamic inventory in AAP
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    api: "https://{{ lookup('env', 'AAP_HOST') }}/api/controller/v2"
+    auth: &auth
+      validate_certs: false
+      user: admin
+      password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      force_basic_auth: true
+    inventory_name: gcp-lab
+    expected_hosts: [rhel-dev-01, rhel-prod-01, ubu-dev-01]
+    expected_groups: [env_dev, env_prod, app_pagos, app_portal, os_rhel, os_ubuntu]
+  tasks:
+    - name: Find the inventory
+      ansible.builtin.uri:
+        url: "{{ api }}/inventories/?name={{ inventory_name }}"
+        <<: *auth
+      register: inv
+
+    - name: Fail early if the inventory does not exist
+      ansible.builtin.assert:
+        that: inv.json.count == 1
+        fail_msg: "Inventory {{ inventory_name }} not found"
+
+    - name: Find its inventory source
+      ansible.builtin.uri:
+        url: "{{ api }}/inventories/{{ inv.json.results[0].id }}/inventory_sources/"
+        <<: *auth
+      register: src
+
+    - name: Launch an inventory sync
+      ansible.builtin.uri:
+        url: "{{ api }}/inventory_sources/{{ src.json.results[0].id }}/update/"
+        method: POST
+        status_code: [201, 202]
+        <<: *auth
+      register: upd
+
+    - name: Wait for the sync to finish
+      ansible.builtin.uri:
+        url: "{{ api }}/inventory_updates/{{ upd.json.inventory_update }}/"
+        <<: *auth
+      register: job
+      until: job.json.status in ['successful', 'failed', 'error', 'canceled']
+      retries: 40
+      delay: 6
+
+    - name: Read hosts
+      ansible.builtin.uri:
+        url: "{{ api }}/inventories/{{ inv.json.results[0].id }}/hosts/?page_size=100"
+        <<: *auth
+      register: hosts
+
+    - name: Read groups
+      ansible.builtin.uri:
+        url: "{{ api }}/inventories/{{ inv.json.results[0].id }}/groups/?page_size=100"
+        <<: *auth
+      register: inv_groups
+
+    - name: Read members of env_prod
+      ansible.builtin.uri:
+        url: "{{ api }}/groups/{{ (inv_groups.json.results | selectattr('name', 'equalto', 'env_prod') | first).id }}/hosts/"
+        <<: *auth
+      register: prod
+      when: "'env_prod' in (inv_groups.json.results | map(attribute='name'))"
+
+    - name: Assert hosts and label groups
+      vars:
+        host_names: "{{ hosts.json.results | map(attribute='name') | sort }}"
+        group_names_found: "{{ inv_groups.json.results | map(attribute='name') | list }}"
+      ansible.builtin.assert:
+        that:
+          - job.json.status == 'successful'
+          - host_names == (expected_hosts | sort)
+          - expected_groups | difference(group_names_found) | length == 0
+          - prod.json.results | map(attribute='name') | list == ['rhel-prod-01']
+        fail_msg: >-
+          sync={{ job.json.status }} hosts={{ host_names }}
+          missing_groups={{ expected_groups | difference(group_names_found) }}
+        success_msg: >-
+          Inventory OK: {{ host_names | length }} hosts {{ host_names }},
+          groups {{ group_names_found | sort }}
