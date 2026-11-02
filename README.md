@@ -248,7 +248,7 @@ including why this is not Microsoft's enterprise-scale landing zone.
 
 A laboratory for Red Hat Ansible Automation Platform 2.7 on Google Cloud,
 containerized installer on RHEL 9, with the whole platform configuration as
-code and seven use cases a regulated organization asks about: dynamic inventory
+code and seven use cases anyone adopting it at scale should answer: dynamic inventory
 without keys, CIS hardening with evidence, patching through an approval with
 rollback, RBAC by team, a custom execution environment, event-driven
 remediation, and an audit export.

@@ -1,8 +1,8 @@
 # Ansible Automation Platform 2.7 laboratory on Google Cloud
 
 A laboratory for **Red Hat Ansible Automation Platform (AAP) 2.7**, containerized
-installer on RHEL 9, built to answer the questions a regulated organization asks
-before adopting it: where credentials live, who can do what, how a change reaches
+installer on RHEL 9, built to answer the questions anyone adopting it at scale
+should answer first: where credentials live, who can do what, how a change reaches
 production, how compliance is evidenced, and how any of it is audited.
 
 Everything is code: the Google Cloud project, the network and the VMs
