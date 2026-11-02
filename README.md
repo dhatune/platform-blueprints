@@ -244,6 +244,30 @@ including why this is not Microsoft's enterprise-scale landing zone.
 
 → [Read it](azure/)
 
+### `automation/aap`
+
+A laboratory for Red Hat Ansible Automation Platform 2.7 on Google Cloud,
+containerized installer on RHEL 9, with the whole platform configuration as
+code and seven use cases a regulated organization asks about: dynamic inventory
+without keys, CIS hardening with evidence, patching through an approval with
+rollback, RBAC by team, a custom execution environment, event-driven
+remediation, and an audit export.
+
+Each case has a verification playbook that exercises it against the running
+platform rather than asserting it.
+
+```
+terraform test                  10 security assertions, mocked provider
+ansible-lint                    production profile, clean
+verified end to end             7 cases against a real project and a trial
+                                subscription, then destroyed
+```
+
+The README lists the thirty-five failures hit while building it in the form
+that saves time: what happens and what to do.
+
+→ [Read it](automation/aap/)
+
 ### `lab`
 
 The stack that verifies everything above, and the reason you do not have to
@@ -315,6 +339,14 @@ HTTPS on the way in, no pipeline. What it does have is a clean-copy deployment
 that a stranger can repeat and nine checks that fail rather than pass when
 they cannot tell. Its decisions live in [`azure/docs/decisions`](azure/docs/decisions/),
 numbered on their own.
+
+**`automation/aap`**: a single-VM laboratory of AAP 2.7 (the installer's
+*growth* topology) with three managed nodes. It was built, verified and
+destroyed against a real project; the published copy replaces the
+environment's identifiers with parameters and was not redeployed after that
+change. It has no high availability, a self-signed certificate, demo users with
+local passwords and a UI on a public IP restricted to admin ranges. What the
+enterprise topology adds is written down at the end of its README.
 
 **`docs/decisions`**: twenty-nine decisions, each with what was rejected and what
 it costs. This is the part with the longest useful life. The code will age.
