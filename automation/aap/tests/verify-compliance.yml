@@ -1,0 +1,72 @@
+# Case 2: scan (before) -> harden -> scan (after) on rhel-dev-01.
+# Passes if every job succeeds, the score improves, evidence lands in the bucket,
+# hardening is idempotent and AAP can still reach the host (no lockout).
+# Run: make verify-compliance
+- name: Verify CIS hardening and compliance evidence
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    api: "https://{{ lookup('env', 'AAP_HOST') }}/api/controller/v2"
+    target: rhel-dev-01
+    bucket: "{{ lookup('env', 'PROJECT_ID') }}-evidence"
+  tasks:
+    - name: Scan before hardening
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: compliance-scan, jt_limit: "{{ target }}", jt_extra_vars: {scan_label: before}}
+    - name: Keep before result
+      ansible.builtin.set_fact: {before_job: "{{ launched.json }}"}
+
+    - name: Apply CIS baseline
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: hardening-cis, jt_limit: "{{ target }}"}
+    - name: Keep hardening result
+      ansible.builtin.set_fact: {harden_job: "{{ launched.json }}"}
+
+    - name: Apply CIS baseline again (idempotence)
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: hardening-cis, jt_limit: "{{ target }}"}
+    - name: Host summary of the second hardening run
+      ansible.builtin.uri:
+        url: "{{ api }}/jobs/{{ launched.json.id }}/job_host_summaries/"
+        user: admin
+        password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: second_run
+      no_log: true
+
+    - name: Scan after hardening
+      ansible.builtin.include_tasks: tasks/launch-job.yml
+      vars: {jt_name: compliance-scan, jt_limit: "{{ target }}", jt_extra_vars: {scan_label: after}}
+    - name: Keep after result
+      ansible.builtin.set_fact: {after_job: "{{ launched.json }}"}
+
+    - name: Evidence objects in the bucket
+      ansible.builtin.command:
+        argv: [gcloud, storage, ls, "gs://{{ bucket }}/compliance/{{ target }}/",
+               --project, "{{ lookup('env', 'PROJECT_ID') }}", --account, "{{ lookup('env', 'GCP_ACCOUNT') }}"]
+      register: evidence
+      changed_when: false
+
+    - name: Assert compliance improved with evidence and no lockout
+      vars:
+        key_before: "compliance_score_{{ target | replace('-', '_') }}_before"
+        key_after: "compliance_score_{{ target | replace('-', '_') }}_after"
+        score_before: "{{ before_job.artifacts[key_before] | default(0) | float }}"
+        score_after: "{{ after_job.artifacts[key_after] | default(0) | float }}"
+      ansible.builtin.assert:
+        that:
+          - before_job.status == 'successful'
+          - harden_job.status == 'successful'
+          - after_job.status == 'successful'
+          - score_after | float > score_before | float
+          - second_run.json.results[0].changed == 0
+          - evidence.stdout_lines | select('search', '\.html$') | list | length >= 2
+        fail_msg: >-
+          before={{ before_job.status }}/{{ score_before }} harden={{ harden_job.status }}
+          after={{ after_job.status }}/{{ score_after }} second_run_changed={{ second_run.json.results[0].changed | default('?') }}
+          evidence={{ evidence.stdout_lines | length }}
+        success_msg: >-
+          CIS score {{ target }}: {{ score_before }} -> {{ score_after }};
+          second hardening run changed=0; {{ evidence.stdout_lines | length }} evidence files in gs://{{ bucket }}

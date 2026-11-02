@@ -1,0 +1,97 @@
+# Case 6 setup: application service (nginx) plus a watchdog that reports outages to
+# Event-Driven Ansible. Job template: app-baseline.
+# Extra vars (injected by an AAP credential, never in the repo):
+#   eda_event_stream_url, eda_auth_header (full header line, e.g. "Authorization: <token>")
+# The AAP CA is passed as eda_ca_cert so the watchdog verifies TLS.
+- name: Application baseline with outage watchdog
+  hosts: app_pagos
+  become: true
+  gather_facts: false
+  vars:
+    watchdog_services: [nginx]
+    watchdog_debounce_seconds: 300
+  tasks:
+    - name: Inputs from the AAP credential are present
+      ansible.builtin.assert:
+        that:
+          - eda_event_stream_url is defined and eda_event_stream_url | length > 0
+          - eda_auth_header is defined and eda_auth_header | length > 0
+          - eda_ca_cert is defined and eda_ca_cert | length > 0
+        fail_msg: "Attach the eda-event-stream credential to this job template"
+        quiet: true
+
+    - name: Nginx installed
+      ansible.builtin.dnf:
+        name: nginx
+        state: present
+
+    - name: Nginx enabled and running
+      ansible.builtin.systemd_service:
+        name: nginx
+        enabled: true
+        state: started
+
+    - name: Watchdog configuration directory
+      ansible.builtin.file:
+        path: /etc/svc-watchdog
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Watchdog settings
+      ansible.builtin.copy:
+        dest: "/etc/svc-watchdog/{{ item.name }}"
+        content: "{{ item.content }}\n"
+        owner: root
+        group: root
+        mode: "0600"
+      loop:
+        - { name: url, content: "{{ eda_event_stream_url }}" }
+        - { name: auth-header, content: "{{ eda_auth_header }}" }
+        - { name: ca.crt, content: "{{ eda_ca_cert }}" }
+      loop_control:
+        label: "{{ item.name }}"
+      no_log: true
+
+    - name: Watchdog script
+      ansible.builtin.template:
+        src: templates/svc-watchdog.sh.j2
+        dest: /usr/local/bin/svc-watchdog
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Watchdog systemd units
+      ansible.builtin.copy:
+        dest: "/etc/systemd/system/{{ item.name }}"
+        content: "{{ item.content }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - name: svc-watchdog.service
+          content: |
+            [Unit]
+            Description=Report down services to Event-Driven Ansible
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/local/bin/svc-watchdog
+        - name: svc-watchdog.timer
+          content: |
+            [Unit]
+            Description=Run svc-watchdog every minute
+            [Timer]
+            OnBootSec=60
+            OnUnitActiveSec=60
+            [Install]
+            WantedBy=timers.target
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Watchdog timer enabled
+      ansible.builtin.systemd_service:
+        name: svc-watchdog.timer
+        enabled: true
+        state: started
+        daemon_reload: true

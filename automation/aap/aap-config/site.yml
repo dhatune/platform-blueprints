@@ -1,0 +1,16 @@
+# Rebuild the whole AAP configuration of the PoC, in order. Idempotent.
+# Run: make configure
+- name: Gateway (organization, teams, users)
+  ansible.builtin.import_playbook: 10-gateway.yml
+
+- name: Controller (credentials, EE, project, inventory)
+  ansible.builtin.import_playbook: 20-controller.yml
+
+- name: Workflows (controlled patching with approval)
+  ansible.builtin.import_playbook: 30-workflow.yml
+
+- name: Event-Driven Ansible (service user, credentials, project, DE, event stream, activation)
+  ansible.builtin.import_playbook: 40-eda.yml
+
+- name: RBAC (team membership and object roles)
+  ansible.builtin.import_playbook: 50-rbac.yml

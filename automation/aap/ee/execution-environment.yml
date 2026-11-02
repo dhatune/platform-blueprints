@@ -1,0 +1,34 @@
+# Execution Environment for the AAP PoC (ansible-builder schema v3).
+# Build: make ee   (builds on aap-01 with Podman and pushes to the private hub)
+version: 3
+
+images:
+  base_image:
+    # Supported minimal EE of AAP 2.7. Red Hat does not publish "latest": pin an explicit tag
+    # (same tag the controller registers as "Minimal execution environment").
+    name: registry.redhat.io/ansible-automation-platform-27/ee-minimal-rhel9:2.16
+
+options:
+  # ee-minimal images ship microdnf, not dnf.
+  package_manager_path: /usr/bin/microdnf
+
+dependencies:
+  galaxy: requirements.yml
+  python: requirements.txt
+  system: bindep.txt
+
+additional_build_files:
+  # ansible.cfg lists Red Hat Automation Hub (certified, validated) before Galaxy.
+  - src: ansible.cfg
+    dest: configs
+
+additional_build_steps:
+  prepend_galaxy:
+    - COPY _build/configs/ansible.cfg /etc/ansible/ansible.cfg
+    # Token only exists in the intermediate galaxy stage; the final image never has it.
+    - ARG ANSIBLE_GALAXY_SERVER_RH_CERTIFIED_TOKEN
+    - ARG ANSIBLE_GALAXY_SERVER_RH_VALIDATED_TOKEN
+  append_final:
+    # Quoted: an unquoted ": " would turn the line into a YAML mapping.
+    - 'LABEL org.opencontainers.image.title="ee-aap-poc"'
+    - 'LABEL org.opencontainers.image.description="AAP PoC execution environment - GCP, POSIX and general modules"'

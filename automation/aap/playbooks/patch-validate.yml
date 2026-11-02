@@ -1,0 +1,42 @@
+# Case 3, step 3: post-patch validation. Critical services must be active.
+- name: Validate after patching
+  hosts: os_rhel
+  become: true
+  gather_facts: false
+  vars:
+    validate_services: [sshd, chronyd]
+    app_services: [nginx]
+  tasks:
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Services expected on this host
+      ansible.builtin.set_fact:
+        services_to_check: >-
+          {{ validate_services
+             + (app_services | select('in', ansible_facts.services.keys() | map('regex_replace', '\.service$', '') | list) | list
+                if 'app_pagos' in group_names else []) }}
+
+    - name: Critical services are running
+      ansible.builtin.assert:
+        that: ansible_facts.services[item ~ '.service'].state == 'running'
+        fail_msg: "PATCH_VALIDATE_FAILED host={{ inventory_hostname }} service={{ item }}"
+      loop: "{{ services_to_check }}"
+
+    - name: Tool needs-restarting available (dnf-utils, not in the GCP RHEL 9 image)
+      ansible.builtin.dnf:
+        name: dnf-utils
+        state: present
+
+    - name: Reboot required?
+      ansible.builtin.command:
+        cmd: needs-restarting -r
+      register: needs_reboot
+      changed_when: false
+      failed_when: needs_reboot.rc not in [0, 1]
+
+    - name: Structured log line
+      ansible.builtin.debug:
+        msg: >-
+          PATCH_VALIDATE host={{ inventory_hostname }} services={{ services_to_check | join(',') }}
+          reboot_required={{ needs_reboot.rc == 1 }}

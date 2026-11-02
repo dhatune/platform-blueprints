@@ -1,0 +1,31 @@
+# Low-risk subset of CIS RHEL 9 Level 1 (Server). Every value can be overridden.
+cis_baseline_pass_max_days: 365
+cis_baseline_pass_min_len: 14
+
+cis_baseline_sshd_dropin: /etc/ssh/sshd_config.d/40-cis.conf
+cis_baseline_sshd_settings:
+  PermitRootLogin: "no"
+  MaxAuthTries: "4"
+  ClientAliveInterval: "300"
+  ClientAliveCountMax: "3"
+  LoginGraceTime: "60"
+  IgnoreRhosts: "yes"
+  PermitEmptyPasswords: "no"
+  Banner: /etc/issue.net
+
+cis_baseline_disabled_fs_modules:
+  - cramfs
+  - udf
+
+cis_baseline_sysctl:
+  kernel.randomize_va_space: "2"
+  fs.suid_dumpable: "0"
+  net.ipv4.conf.all.send_redirects: "0"
+  net.ipv4.conf.default.send_redirects: "0"
+  net.ipv4.conf.all.accept_redirects: "0"
+  net.ipv4.conf.default.accept_redirects: "0"
+  net.ipv4.conf.all.log_martians: "1"
+
+cis_baseline_banner: |
+  Authorized use only.
+  All activity may be monitored and recorded.

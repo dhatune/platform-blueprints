@@ -1,0 +1,9 @@
+galaxy_info:
+  author: platform-blueprints
+  description: Low-risk CIS RHEL 9 Level 1 baseline for the AAP laboratory
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions: ["9"]
+dependencies: []

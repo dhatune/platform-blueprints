@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Managed by Ansible (app-baseline). Posts a service_down event to the AAP event stream
+# when a watched service is not active. Debounced: at most one event per service every
+# {{ watchdog_debounce_seconds }} s.
+set -euo pipefail
+CONF_DIR=/etc/svc-watchdog
+STATE_DIR=/var/lib/svc-watchdog
+URL="$(cat "$CONF_DIR/url")"
+mkdir -p "$STATE_DIR"
+
+for svc in {{ watchdog_services | join(' ') }}; do
+  if systemctl is-active --quiet "$svc"; then
+    rm -f "$STATE_DIR/$svc.sent"
+    continue
+  fi
+  now=$(date +%s)
+  last=$(cat "$STATE_DIR/$svc.sent" 2>/dev/null || echo 0)
+  (( now - last < {{ watchdog_debounce_seconds }} )) && continue
+  payload=$(printf '{"alert":"service_down","host":"%s","service":"%s","ts":"%s"}' \
+    "{{ inventory_hostname }}" "$svc" "$(date -u +%FT%TZ)")
+  # Header value read from a 600 file so it never shows up in the process list.
+  if curl -sS --fail --max-time 10 --cacert "$CONF_DIR/ca.crt" -X POST "$URL" \
+       -H "Content-Type: application/json" -H @"$CONF_DIR/auth-header" -d "$payload" >/dev/null; then
+    echo "$now" > "$STATE_DIR/$svc.sent"
+    logger -t svc-watchdog "EDA_EVENT_SENT service=$svc"
+  else
+    logger -t svc-watchdog "EDA_EVENT_FAILED service=$svc"
+  fi
+done

@@ -1,0 +1,32 @@
+# Case 6: Event-Driven Ansible. A watchdog on the node posts {"alert":"service_down",...}
+# to an AAP event stream; this rule launches the remediation job template.
+# The webhook source is swapped by the event stream mapping of the rulebook activation.
+- name: Remediate service outages
+  hosts: all
+  sources:
+    - name: service_events
+      ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+  rules:
+    # Allowlist: an event must never be able to choose an arbitrary service to restart.
+    - name: Allowed service down -> restart it
+      condition: >-
+        event.payload.alert == "service_down"
+        and event.payload.service in ["nginx", "chronyd"]
+      action:
+        run_job_template:
+          name: remediar-servicio
+          organization: AAP-PoC
+          job_args:
+            extra_vars:
+              target_host: "{{ event.payload.host }}"
+              service: "{{ event.payload.service }}"
+
+    - name: Unexpected service in event -> only log it
+      condition: >-
+        event.payload.alert == "service_down"
+        and event.payload.service not in ["nginx", "chronyd"]
+      action:
+        debug:
+          msg: "EDA_REJECTED host={{ event.payload.host }} service={{ event.payload.service }}"

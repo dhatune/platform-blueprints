@@ -1,0 +1,122 @@
+# Case 4: segregation of duties, checked by authenticating as each demo user.
+# Run: make verify-rbac
+- name: Verify team-based RBAC
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    api: "https://{{ lookup('env', 'AAP_HOST') }}/api/controller/v2"
+    pw:
+      op1: "{{ lookup('env', 'USER_PASSWORD_OP1') }}"
+      sec1: "{{ lookup('env', 'USER_PASSWORD_SEC1') }}"
+      aud1: "{{ lookup('env', 'USER_PASSWORD_AUD1') }}"
+      admin: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+    # (user, method, path, expected HTTP status, description)
+    checks:
+      - [aud1, GET, "/jobs/", [200], "Auditoria can read the job history"]
+      - [aud1, GET, "/inventories/?name=gcp-lab", [200], "Auditoria can see inventories"]
+      - [aud1, POST, "/job_templates/@hardening-cis/launch/", [403], "Auditoria can NOT launch hardening"]
+      - [aud1, PATCH, "/inventories/@@gcp-lab/", [403], "Auditoria can NOT modify inventories"]
+      - [op1, POST, "/job_templates/@hardening-cis/launch/", [403, 404], "Operaciones can NOT launch hardening"]
+      - [op1, GET, "/credentials/@@@maquina-nodos/", [403, 404], "Operaciones can NOT see the SSH credential"]
+      - [sec1, PATCH, "/credentials/@@@maquina-nodos/", [403, 404], "Seguridad can NOT modify the SSH credential"]
+  tasks:
+    - name: Resolve object ids (as admin)
+      ansible.builtin.uri:
+        url: "{{ api }}/{{ item.kind }}/?name={{ item.name }}"
+        user: admin
+        password: "{{ pw.admin }}"
+        force_basic_auth: true
+        validate_certs: false
+      loop:
+        - {kind: job_templates, name: hardening-cis}
+        - {kind: inventories, name: gcp-lab}
+        - {kind: credentials, name: maquina-nodos}
+        - {kind: workflow_job_templates, name: parcheo-controlado}
+        - {kind: job_templates, name: compliance-scan}
+        - {kind: job_templates, name: export-auditoria}
+      register: ids
+      no_log: true
+
+    - name: Id map
+      ansible.builtin.set_fact:
+        jt_id: "{{ ids.results[0].json.results[0].id }}"
+        inv_id: "{{ ids.results[1].json.results[0].id }}"
+        cred_id: "{{ ids.results[2].json.results[0].id }}"
+        wf_id: "{{ ids.results[3].json.results[0].id }}"
+        scan_id: "{{ ids.results[4].json.results[0].id }}"
+        audit_jt_id: "{{ ids.results[5].json.results[0].id }}"
+
+    - name: Permission checks
+      ansible.builtin.uri:
+        url: "{{ api }}{{ item[2] | replace('@@@maquina-nodos', cred_id) | replace('@@gcp-lab', inv_id) | replace('@hardening-cis', jt_id) }}"
+        method: "{{ item[1] }}"
+        body_format: json
+        body: "{{ {} if item[1] in ['POST', 'PATCH'] else omit }}"
+        user: "{{ item[0] }}"
+        password: "{{ pw[item[0]] }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: "{{ item[3] }}"
+      loop: "{{ checks }}"
+      loop_control:
+        label: "{{ item[4] }}"
+
+    - name: Capabilities seen by each user
+      ansible.builtin.uri:
+        url: "{{ api }}/{{ item.kind }}/{{ item.id }}/"
+        user: "{{ item.user }}"
+        password: "{{ pw[item.user] }}"
+        force_basic_auth: true
+        validate_certs: false
+      loop:
+        - {user: op1, kind: workflow_job_templates, id: "{{ wf_id }}", cap: start, want: true, what: "Operaciones can launch the patch workflow"}
+        - {user: sec1, kind: job_templates, id: "{{ scan_id }}", cap: start, want: true, what: "Seguridad can launch the compliance scan"}
+        - {user: aud1, kind: job_templates, id: "{{ audit_jt_id }}", cap: start, want: true, what: "Auditoria can launch the audit export"}
+        - {user: aud1, kind: workflow_job_templates, id: "{{ wf_id }}", cap: start, want: false, what: "Auditoria can NOT launch patching"}
+        - {user: op1, kind: workflow_job_templates, id: "{{ wf_id }}", cap: edit, want: false, what: "Operaciones can NOT edit the workflow"}
+      loop_control:
+        label: "{{ item.what }}"
+      register: caps
+
+    - name: Assert capabilities
+      ansible.builtin.assert:
+        that: (item.json.summary_fields.user_capabilities[item.item.cap] | default(false)) == item.item.want
+        fail_msg: "FAILED: {{ item.item.what }}"
+        quiet: true
+      loop: "{{ caps.results }}"
+      loop_control:
+        label: "{{ item.item.what }}"
+
+    - name: What the auditor can actually see (not just HTTP 200)
+      ansible.builtin.uri:
+        url: "{{ api }}/{{ item }}/"
+        user: aud1
+        password: "{{ pw.aud1 }}"
+        force_basic_auth: true
+        validate_certs: false
+      loop: [jobs, inventories, job_templates, workflow_job_templates]
+      register: aud_view
+
+    - name: Assert the auditor sees the organization content
+      ansible.builtin.assert:
+        that: item.json.count > 0
+        fail_msg: "FAILED: Auditoria does not see {{ item.item }} (count=0)"
+        quiet: true
+      loop: "{{ aud_view.results }}"
+      loop_control:
+        label: "aud1 sees {{ item.item }}: {{ item.json.count }}"
+
+    - name: Secrets are never shown, not even to admin
+      ansible.builtin.uri:
+        url: "{{ api }}/credentials/{{ cred_id }}/"
+        user: admin
+        password: "{{ pw.admin }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: cred
+
+    - name: Assert encrypted secret
+      ansible.builtin.assert:
+        that: cred.json.inputs.ssh_key_data == '$encrypted$'
+        success_msg: "RBAC OK: {{ checks | length }} permission checks + {{ caps.results | length }} capability checks; secrets shown as $encrypted$"

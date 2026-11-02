@@ -1,0 +1,66 @@
+# Case 3: controlled patching workflow.
+#   precheck(dev) -> apply(dev) -> validate(dev) -> APPROVAL -> precheck(prod) -> apply(prod) -> validate(prod)
+#   any apply/validate failure -> rollback on the same environment
+- name: Configure workflows
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/objects.yml
+  vars:
+    wf_name: parcheo-controlado
+  tasks:
+    - name: Patch workflow with manual approval before production
+      ansible.controller.workflow_job_template:
+        name: "{{ wf_name }}"
+        description: "Case 3: patch dev -> approval -> prod, with automatic rollback"
+        organization: "{{ aap_org }}"
+        inventory: "{{ aap_inventory.name }}"
+        ask_variables_on_launch: true
+        extra_vars:
+          patch_scope: security
+          patch_force_fail: false
+        workflow_nodes:
+          - identifier: precheck-dev
+            unified_job_template: {name: patch-precheck, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_dev
+            related: {success_nodes: [{identifier: apply-dev}]}
+          - identifier: apply-dev
+            unified_job_template: {name: patch-apply, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_dev
+            related:
+              success_nodes: [{identifier: validate-dev}]
+              failure_nodes: [{identifier: rollback-dev}]
+          - identifier: validate-dev
+            unified_job_template: {name: patch-validate, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_dev
+            related:
+              success_nodes: [{identifier: approve-prod}]
+              failure_nodes: [{identifier: rollback-dev}]
+          - identifier: rollback-dev
+            unified_job_template: {name: patch-rollback, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_dev
+          - identifier: approve-prod
+            unified_job_template:
+              name: Aprobar paso a produccion
+              description: Security reviews the result in dev and authorizes patching production
+              type: workflow_approval
+              timeout: 3600
+            related: {success_nodes: [{identifier: precheck-prod}]}
+          - identifier: precheck-prod
+            unified_job_template: {name: patch-precheck, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_prod
+            related: {success_nodes: [{identifier: apply-prod}]}
+          - identifier: apply-prod
+            unified_job_template: {name: patch-apply, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_prod
+            related:
+              success_nodes: [{identifier: validate-prod}]
+              failure_nodes: [{identifier: rollback-prod}]
+          - identifier: validate-prod
+            unified_job_template: {name: patch-validate, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_prod
+            related: {failure_nodes: [{identifier: rollback-prod}]}
+          - identifier: rollback-prod
+            unified_job_template: {name: patch-rollback, type: job_template, organization: {name: "{{ aap_org }}"}}
+            limit: env_prod

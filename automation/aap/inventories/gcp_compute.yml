@@ -1,0 +1,32 @@
+# GCP dynamic inventory (google.cloud.gcp_compute) used by the AAP inventory source.
+# Authentication is keyless: inside the EE, google-auth reads the identity of the
+# service account attached to aap-01 (sa-aap-inventory, roles/compute.viewer)
+# from the GCE metadata server. No JSON key exists anywhere.
+plugin: google.cloud.gcp_compute
+auth_kind: application
+scopes:
+  - https://www.googleapis.com/auth/compute.readonly
+projects:
+  - your-project-id          # set to PROJECT_ID; `make configure` refuses to run if they differ
+
+# Only running, PoC-managed VMs; the platform host itself is excluded.
+filters:
+  - status = RUNNING
+  - labels.managed_by = ansible-poc
+  - labels.app != platform
+
+hostnames:
+  - name
+compose:
+  ansible_host: networkInterfaces[0].networkIP   # private IP: the controller is inside the VPC
+  gcp_zone: zone
+
+# Labels become groups: env_dev, env_prod, app_pagos, app_portal, os_rhel, os_ubuntu.
+# Same prefixes are used by the AWS and VMware examples so playbooks do not change.
+keyed_groups:
+  - key: labels.env
+    prefix: env
+  - key: labels.app
+    prefix: app
+  - key: labels.os
+    prefix: os

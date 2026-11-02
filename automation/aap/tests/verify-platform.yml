@@ -1,0 +1,58 @@
+# Verify that every AAP component answers through the platform gateway
+# and that a subscription is attached.
+# Run: make verify-platform
+- name: Verify AAP platform health
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aap_url: "https://{{ lookup('env', 'AAP_HOST') }}"
+    aap_user: admin
+    aap_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+  tasks:
+    - name: Gateway ping
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/gateway/v1/ping/"
+        validate_certs: false
+      register: gw
+
+    - name: Controller ping (proxied by gateway)
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/controller/v2/ping/"
+        validate_certs: false
+      register: ctrl
+
+    - name: EDA status (proxied by gateway)
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/eda/v1/status/"
+        validate_certs: false
+        status_code: [200]
+      register: eda
+
+    - name: Automation hub API root (proxied by gateway)
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/galaxy/"
+        validate_certs: false
+        user: "{{ aap_user }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+      register: hub
+
+    - name: Controller configuration as admin (subscription info)
+      ansible.builtin.uri:
+        url: "{{ aap_url }}/api/controller/v2/config/"
+        validate_certs: false
+        user: "{{ aap_user }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+      register: cfg
+
+    - name: Assert platform is healthy and licensed
+      ansible.builtin.assert:
+        that:
+          - ctrl.json.version is defined
+          - cfg.json.license_info.subscription_name | default('') | length > 0
+        fail_msg: "Platform not healthy or no subscription attached"
+        success_msg: >-
+          AAP OK - controller {{ ctrl.json.version }},
+          subscription '{{ cfg.json.license_info.subscription_name }}'

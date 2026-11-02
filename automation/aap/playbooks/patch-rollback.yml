@@ -1,0 +1,33 @@
+# Case 3, rollback branch: undo ONLY the transaction created by this patch run.
+# Safety rule: if no new transaction exists after pre_id, do nothing (never undo older work).
+- name: Roll back patches
+  hosts: os_rhel
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Pre-check data must exist
+      ansible.builtin.assert:
+        that: ansible_local.patch.pre_id is defined
+        fail_msg: "No /etc/ansible/facts.d/patch.fact: nothing to roll back safely"
+
+    # post_id may be missing if patch-apply failed before recording it.
+    - name: Last dnf transaction now
+      ansible.builtin.include_tasks: tasks/dnf-last-transaction.yml
+
+    - name: Decide what to undo
+      ansible.builtin.set_fact:
+        rollback_from: "{{ ansible_local.patch.pre_id | int }}"
+        rollback_target: "{{ dnf_last_id | int }}"
+
+    - name: Undo the patch transaction
+      ansible.builtin.command:
+        cmd: "dnf -y history undo {{ rollback_target }}"
+      when: rollback_target | int > rollback_from | int
+      changed_when: true
+
+    - name: Structured log line
+      ansible.builtin.debug:
+        msg: >-
+          {{ ('PATCH_ROLLBACK host=' ~ inventory_hostname ~ ' undone=' ~ rollback_target ~ ' pre_id=' ~ rollback_from)
+             if rollback_target | int > rollback_from | int
+             else ('PATCH_ROLLBACK host=' ~ inventory_hostname ~ ' nothing to roll back (pre_id=' ~ rollback_from ~ ')') }}

@@ -1,0 +1,34 @@
+# EXAMPLE (not used by the PoC): VMware vCenter dynamic inventory with the same groups as GCP.
+# Tags are vSphere tags grouped in categories named env, app and os
+# (e.g. category "env" with tags "dev" / "prod").
+#
+# In AAP: attach a "VMware vCenter" credential to the inventory source; it injects
+# VMWARE_HOST / VMWARE_USER / VMWARE_PASSWORD, so no host or secret lives in this file.
+# Use a read-only vCenter account scoped to the folders that hold managed VMs.
+plugin: community.vmware.vmware_vm_inventory
+validate_certs: true          # trust the corporate CA in the EE instead of disabling TLS
+with_tags: true
+
+properties:
+  - name
+  - config.name
+  - guest.ipAddress
+  - summary.runtime.powerState
+
+filters:
+  - summary.runtime.powerState == "poweredOn"
+
+hostnames:
+  - config.name
+compose:
+  ansible_host: guest.ipAddress
+
+# tag_category is {"<category>": ["<tag>", ...]}: env/app/os categories become
+# the same env_*, app_*, os_* groups used on GCP and AWS.
+keyed_groups:
+  - key: tag_category.env
+    prefix: env
+  - key: tag_category.app
+    prefix: app
+  - key: tag_category.os
+    prefix: os

@@ -1,0 +1,8 @@
+# Collections baked into the EE. Pinned ranges keep builds reproducible.
+collections:
+  - name: google.cloud          # gcp_compute inventory plugin and GCP modules
+    version: ">=1.4.0,<2.0.0"
+  - name: ansible.posix         # sysctl, mount, authorized_key, firewalld...
+    version: ">=1.5.0,<3.0.0"
+  - name: community.general     # assorted modules used by playbooks
+    version: ">=9.0.0,<12.0.0"

@@ -1,0 +1,52 @@
+# Case 3, step 2: apply updates and record the resulting dnf transaction.
+# Extra vars: patch_scope (security|all), patch_force_fail (true to exercise the rollback path).
+- name: Apply patches
+  hosts: os_rhel
+  become: true
+  gather_facts: true
+  vars:
+    patch_scope: security
+    patch_force_fail: false
+    # Only repositories that keep older package versions are in scope, so the
+    # package-level rollback can always downgrade. Cloud agent repos (google-*)
+    # keep only the latest version and are updated on their own schedule.
+    patch_disable_repos: ["google-*"]
+  tasks:
+    - name: Pre-check must have run
+      ansible.builtin.assert:
+        that: ansible_local.patch.pre_id is defined
+        fail_msg: "Run patch-precheck first (no /etc/ansible/facts.d/patch.fact)"
+
+    - name: Update packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        security: "{{ patch_scope == 'security' }}"
+        update_only: true
+        disablerepo: "{{ patch_disable_repos }}"
+      register: dnf_update
+
+    - name: Last dnf transaction after patching
+      ansible.builtin.include_tasks: tasks/dnf-last-transaction.yml
+
+    - name: Record the post-patch transaction
+      ansible.builtin.copy:
+        dest: /etc/ansible/facts.d/patch.fact
+        content: >-
+          {{ {'pre_id': ansible_local.patch.pre_id | int, 'post_id': dnf_last_id | int,
+              'ts': ansible_local.patch.ts} | to_json }}
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Structured log line
+      ansible.builtin.debug:
+        msg: >-
+          PATCH_APPLY host={{ inventory_hostname }} scope={{ patch_scope }}
+          pre_id={{ ansible_local.patch.pre_id }} post_id={{ dnf_last_id }}
+          changed={{ dnf_update.changed }}
+
+    - name: Simulated failure (demo of the rollback branch)
+      ansible.builtin.fail:
+        msg: "PATCH_FORCED_FAILURE host={{ inventory_hostname }}"
+      when: patch_force_fail | bool

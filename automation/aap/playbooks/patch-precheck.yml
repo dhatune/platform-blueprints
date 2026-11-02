@@ -1,0 +1,40 @@
+# Case 3, step 1: pre-checks before patching. Records the last dnf transaction so the
+# rollback can tell whether this run created a new one.
+# Local fact written: /etc/ansible/facts.d/patch.fact -> {"pre_id": N, "post_id": null, "ts": ...}
+- name: Patch pre-check
+  hosts: os_rhel
+  become: true
+  gather_facts: true
+  vars:
+    patch_min_free_mb: 1024
+  tasks:
+    - name: Enough free space in /var
+      vars:
+        var_mount: >-
+          {{ ansible_mounts | selectattr('mount', 'in', ['/var', '/']) | sort(attribute='mount', reverse=true) | first }}
+      ansible.builtin.assert:
+        that: (var_mount.size_available / 1048576) > patch_min_free_mb
+        fail_msg: "Less than {{ patch_min_free_mb }} MB free in {{ var_mount.mount }}"
+
+    - name: Last dnf transaction before patching
+      ansible.builtin.include_tasks: tasks/dnf-last-transaction.yml
+
+    - name: Local facts directory
+      ansible.builtin.file:
+        path: /etc/ansible/facts.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Record the pre-patch transaction
+      ansible.builtin.copy:
+        dest: /etc/ansible/facts.d/patch.fact
+        content: "{{ {'pre_id': dnf_last_id | int, 'post_id': none, 'ts': ansible_date_time.iso8601} | to_json }}\n"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Structured log line
+      ansible.builtin.debug:
+        msg: "PATCH_PRECHECK host={{ inventory_hostname }} pre_id={{ dnf_last_id }}"
