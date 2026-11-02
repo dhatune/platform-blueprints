@@ -114,7 +114,7 @@ jobs:
       - name: Validate every module and composition
         run: |
           set -e
-          for dir in landing-zone/modules/*/ landing-zone/example platform/vaultwarden/cloud-run; do
+          for dir in landing-zone/modules/*/ landing-zone/example platform/vaultwarden/cloud-run automation/aap/infra/terraform; do
             echo "--- $dir"
             # Where a lock file is committed, refuse to update it. A run that
             # silently rewrites the lock verifies whatever it just downloaded
@@ -126,6 +126,8 @@ jobs:
             fi
             terraform -chdir="$dir" validate
           done
+      - name: AAP laboratory, security assertions against a mocked provider
+        run: terraform -chdir=automation/aap/infra/terraform test
       - name: Azure landing zone, validated and tested against a mocked provider
         # The Azure tree carries its own suite: format, validate and every
         # terraform test file, with no credentials and no cloud.
@@ -219,6 +221,36 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sudo apt-get update && sudo apt-get install -y shellcheck
       - run: shellcheck platform/vaultwarden/backup/*.sh lab/*.sh
+      - name: AAP laboratory scripts
+        run: |
+          shellcheck automation/aap/scripts/*.sh automation/aap/bootstrap/*.sh \
+            automation/aap/installer/*.sh automation/aap/ee/*.sh \
+            automation/aap/tests/*.sh
+
+  ansible:
+    name: ansible
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: automation/aap
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Tooling
+        run: pip install --quiet "ansible-core==2.18.*" ansible-lint yamllint
+      - name: Collections the playbooks use (community sources; no token in CI)
+        # The configuration-as-code playbooks use certified collections that need
+        # an Automation Hub token, so only playbooks, roles and rulebooks are
+        # linted here.
+        run: ansible-galaxy collection install ansible.posix community.general google.cloud -p .collections --server https://galaxy.ansible.com
+      - name: YAML
+        run: yamllint -s .
+      - name: Ansible, production profile
+        run: ANSIBLE_COLLECTIONS_PATH=.collections ansible-lint playbooks roles rulebooks
+      - name: Inventories produce the same groups on every cloud
+        run: bash tests/check-group-parity.sh
 
   links:
     name: links
